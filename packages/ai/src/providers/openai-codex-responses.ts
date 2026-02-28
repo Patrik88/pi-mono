@@ -279,6 +279,14 @@ function buildRequestBody(
 	context: Context,
 	options?: OpenAICodexResponsesOptions,
 ): RequestBody {
+	const includeValues = (body: RequestBody, values: string[]): void => {
+		const includeSet = new Set(body.include || []);
+		for (const value of values) {
+			includeSet.add(value);
+		}
+		body.include = Array.from(includeSet);
+	};
+
 	const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
 		includeSystemPrompt: false,
 	});
@@ -300,9 +308,11 @@ function buildRequestBody(
 		body.temperature = options.temperature;
 	}
 
-	if (context.tools) {
-		body.tools = convertResponsesTools(context.tools, { strict: null });
+	const mappedTools = convertResponsesTools(context.tools ?? [], { strict: null, includeNativeWebSearch: true });
+	if (mappedTools.length > 0) {
+		body.tools = mappedTools;
 	}
+	includeValues(body, ["web_search_call.results", "web_search_call.action.sources"]);
 
 	if (options?.reasoningEffort !== undefined) {
 		body.reasoning = {
