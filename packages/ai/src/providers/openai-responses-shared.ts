@@ -3,6 +3,7 @@ import type {
 	Tool as OpenAITool,
 	ResponseCreateParamsStreaming,
 	ResponseFunctionToolCall,
+	ResponseFunctionWebSearch,
 	ResponseInput,
 	ResponseInputContent,
 	ResponseInputImage,
@@ -62,6 +63,7 @@ export interface ConvertResponsesMessagesOptions {
 
 export interface ConvertResponsesToolsOptions {
 	strict?: boolean | null;
+	includeNativeWebSearch?: boolean;
 }
 
 // =============================================================================
@@ -245,13 +247,17 @@ export function convertResponsesMessages<TApi extends Api>(
 
 export function convertResponsesTools(tools: Tool[], options?: ConvertResponsesToolsOptions): OpenAITool[] {
 	const strict = options?.strict === undefined ? false : options.strict;
-	return tools.map((tool) => ({
+	const convertedTools: OpenAITool[] = tools.map((tool) => ({
 		type: "function",
 		name: tool.name,
 		description: tool.description,
 		parameters: tool.parameters as any, // TypeBox already generates JSON Schema
 		strict,
 	}));
+	if (options?.includeNativeWebSearch) {
+		convertedTools.push({ type: "web_search" });
+	}
+	return convertedTools;
 }
 
 // =============================================================================
@@ -265,11 +271,141 @@ export async function processResponsesStream<TApi extends Api>(
 	model: Model<TApi>,
 	options?: OpenAIResponsesStreamOptions,
 ): Promise<void> {
+	interface WebSearchCallActionSource {
+		type?: string;
+		url?: string;
+	}
+
+	interface WebSearchCallAction {
+		type?: string;
+		query?: string;
+		url?: string;
+		pattern?: string;
+		sources?: WebSearchCallActionSource[];
+	}
+
+	interface WebSearchCallResult {
+		title?: string;
+		url?: string;
+		snippet?: string;
+	}
+
+	interface WebSearchCallExtras {
+		action?: WebSearchCallAction;
+		results?: WebSearchCallResult[];
+	}
+
+	const webSearchStatusLabel = (
+		type:
+			| "response.web_search_call.in_progress"
+			| "response.web_search_call.searching"
+			| "response.web_search_call.completed",
+	): string => {
+		switch (type) {
+			case "response.web_search_call.in_progress":
+				return "Web search started";
+			case "response.web_search_call.searching":
+				return "Web search in progress";
+			case "response.web_search_call.completed":
+				return "Web search finished";
+		}
+	};
+
+	const appendThinkingDelta = (contentIndex: number, delta: string): void => {
+		const block = output.content[contentIndex];
+		if (!block || block.type !== "thinking") return;
+		const prefix = block.thinking.length > 0 ? "\n" : "";
+		block.thinking += `${prefix}${delta}`;
+		stream.push({
+			type: "thinking_delta",
+			contentIndex,
+			delta: `${prefix}${delta}`,
+			partial: output,
+		});
+	};
+
+	const ensureWebSearchThinkingBlock = (sequenceNumber: number): number => {
+		const existingIndex = webSearchContentIndexBySequence.get(sequenceNumber);
+		if (existingIndex !== undefined) {
+			return existingIndex;
+		}
+
+		const thinkingBlock: ThinkingContent = { type: "thinking", thinking: "" };
+		output.content.push(thinkingBlock);
+		const contentIndex = blockIndex();
+		stream.push({ type: "thinking_start", contentIndex, partial: output });
+		webSearchContentIndexBySequence.set(sequenceNumber, contentIndex);
+		return contentIndex;
+	};
+
+	const finishWebSearchThinkingBlock = (sequenceNumber: number): void => {
+		const contentIndex = webSearchContentIndexBySequence.get(sequenceNumber);
+		if (contentIndex === undefined || closedWebSearchSequences.has(sequenceNumber)) {
+			return;
+		}
+
+		const block = output.content[contentIndex];
+		if (block?.type === "thinking") {
+			stream.push({
+				type: "thinking_end",
+				contentIndex,
+				content: block.thinking,
+				partial: output,
+			});
+			closedWebSearchSequences.add(sequenceNumber);
+		}
+	};
+
+	const sequenceFromItemId = (itemId: string): number | undefined => webSearchSequenceByItemId.get(itemId);
+
+	const getWebSearchSummaryLines = (item: ResponseFunctionWebSearch): string[] => {
+		const lines: string[] = [];
+		const enriched = item as ResponseFunctionWebSearch & WebSearchCallExtras;
+		const action = enriched.action;
+		if (!action) {
+			return lines;
+		}
+
+		if (action.type === "search" && action.query) {
+			lines.push(`Query: ${action.query}`);
+		} else if (action.type === "open_page" && action.url) {
+			lines.push(`Opened page: ${action.url}`);
+		} else if (action.type === "find") {
+			if (action.pattern) {
+				lines.push(`Find pattern: ${action.pattern}`);
+			}
+			if (action.url) {
+				lines.push(`Find URL: ${action.url}`);
+			}
+		}
+
+		const sourceUrls = (action.sources || [])
+			.map((source) => source.url)
+			.filter((url): url is string => typeof url === "string" && url.length > 0);
+		if (sourceUrls.length > 0) {
+			const displayed = sourceUrls.slice(0, 5);
+			lines.push(`Sources: ${displayed.join(", ")}${sourceUrls.length > 5 ? ", ..." : ""}`);
+		}
+
+		const resultUrls = (enriched.results || [])
+			.map((result) => result.url)
+			.filter((url): url is string => typeof url === "string" && url.length > 0);
+		if (resultUrls.length > 0) {
+			lines.push(`Result URLs: ${resultUrls.slice(0, 3).join(", ")}${resultUrls.length > 3 ? ", ..." : ""}`);
+		}
+
+		return lines;
+	};
+
 	let currentItem: ResponseReasoningItem | ResponseOutputMessage | ResponseFunctionToolCall | null = null;
 	let currentBlock: ThinkingContent | TextContent | (ToolCall & { partialJson: string }) | null = null;
 	const blocks = output.content;
 	const blockIndex = () => blocks.length - 1;
 	let webSearchCalls = 0;
+	const webSearchContentIndexBySequence = new Map<number, number>();
+	const webSearchSequenceByItemId = new Map<string, number>();
+	const lastWebSearchStatusBySequence = new Map<number, string>();
+	const closedWebSearchSequences = new Set<number>();
 
 	for await (const event of openaiStream) {
 		if (event.type === "response.output_item.added") {
@@ -301,7 +437,13 @@ export async function processResponsesStream<TApi extends Api>(
 			event.type === "response.web_search_call.searching" ||
 			event.type === "response.web_search_call.completed"
 		) {
-			// Web search progress events — nothing to stream to the client
+			webSearchSequenceByItemId.set(event.item_id, event.sequence_number);
+			const contentIndex = ensureWebSearchThinkingBlock(event.sequence_number);
+			const statusLabel = webSearchStatusLabel(event.type);
+			if (lastWebSearchStatusBySequence.get(event.sequence_number) !== statusLabel) {
+				appendThinkingDelta(contentIndex, statusLabel);
+				lastWebSearchStatusBySequence.set(event.sequence_number, statusLabel);
+			}
 		} else if (event.type === "response.reasoning_summary_part.added") {
 			if (currentItem && currentItem.type === "reasoning") {
 				currentItem.summary = currentItem.summary || [];
@@ -434,8 +576,21 @@ export async function processResponsesStream<TApi extends Api>(
 				stream.push({ type: "toolcall_end", contentIndex: blockIndex(), toolCall, partial: output });
 			} else if (item.type === "web_search_call") {
 				webSearchCalls++;
+				const mappedSequenceNumber = sequenceFromItemId(item.id);
+				const sequenceNumber = mappedSequenceNumber ?? webSearchCalls;
+				const contentIndex = ensureWebSearchThinkingBlock(sequenceNumber);
+				const summaryLines = getWebSearchSummaryLines(item);
+				if (summaryLines.length > 0) {
+					for (const line of summaryLines) {
+						appendThinkingDelta(contentIndex, line);
+					}
+				}
+				finishWebSearchThinkingBlock(sequenceNumber);
 			}
 		} else if (event.type === "response.completed") {
+			for (const sequenceNumber of webSearchContentIndexBySequence.keys()) {
+				finishWebSearchThinkingBlock(sequenceNumber);
+			}
 			const response = event.response;
 			if (response?.usage) {
 				const cachedTokens = response.usage.input_tokens_details?.cached_tokens || 0;
