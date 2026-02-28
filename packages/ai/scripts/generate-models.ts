@@ -1326,12 +1326,16 @@ async function generateModels() {
 
 	const azureOpenAiModels: Model<Api>[] = allModels
 		.filter((model) => model.provider === "openai" && model.api === "openai-responses")
-		.map((model) => ({
-			...model,
-			api: "azure-openai-responses",
-			provider: "azure-openai-responses",
-			baseUrl: "",
-		}));
+		.map((model) => {
+			const { webSearchPerCall: _webSearchPerCall, ...costWithoutWebSearch } = model.cost;
+			return {
+				...model,
+				cost: costWithoutWebSearch,
+				api: "azure-openai-responses",
+				provider: "azure-openai-responses",
+				baseUrl: "",
+			};
+		});
 	allModels.push(...azureOpenAiModels);
 
 	// Group by provider and deduplicate by model ID

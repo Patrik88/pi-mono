@@ -66,6 +66,11 @@ export interface StreamOptions {
 	 */
 	transport?: Transport;
 	/**
+	 * Explicit opt-in for providers that support native OpenAI web_search.
+	 * Default: false.
+	 */
+	enableNativeWebSearch?: boolean;
+	/**
 	 * Prompt cache retention preference. Providers map this to their supported values.
 	 * Default: "short".
 	 */

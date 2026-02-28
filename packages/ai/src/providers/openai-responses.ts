@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
 import { getEnvApiKey } from "../env-api-keys.js";
-import { supportsXhigh } from "../models.js";
+import { supportsNativeWebSearch, supportsXhigh } from "../models.js";
 import type {
 	Api,
 	AssistantMessage,
@@ -181,8 +181,18 @@ function createClient(
 	});
 }
 
-function buildParams(model: Model<"openai-responses">, context: Context, options?: OpenAIResponsesOptions) {
+export function buildParams(model: Model<"openai-responses">, context: Context, options?: OpenAIResponsesOptions) {
 	const messages = convertResponsesMessages(model, context, OPENAI_TOOL_CALL_PROVIDERS);
+	const includeValue = (
+		params: ResponseCreateParamsStreaming,
+		values: NonNullable<ResponseCreateParamsStreaming["include"]>,
+	): void => {
+		const includeSet = new Set(params.include ?? []);
+		for (const value of values) {
+			includeSet.add(value);
+		}
+		params.include = Array.from(includeSet);
+	};
 
 	const cacheRetention = resolveCacheRetention(options?.cacheRetention);
 	const params: ResponseCreateParamsStreaming = {
@@ -206,8 +216,16 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 		params.service_tier = options.serviceTier;
 	}
 
-	if (context.tools) {
-		params.tools = convertResponsesTools(context.tools);
+	const isGpt5Model = model.id === "gpt-5" || model.id.startsWith("gpt-5-") || model.id.startsWith("gpt-5.");
+	const isUnsupportedGpt5MinimalReasoning = isGpt5Model && options?.reasoningEffort === "minimal";
+	const includeNativeWebSearch =
+		options?.enableNativeWebSearch === true && supportsNativeWebSearch(model) && !isUnsupportedGpt5MinimalReasoning;
+	const mappedTools = convertResponsesTools(context.tools ?? [], { includeNativeWebSearch });
+	if (mappedTools.length > 0) {
+		params.tools = mappedTools;
+	}
+	if (includeNativeWebSearch) {
+		includeValue(params, ["web_search_call.results", "web_search_call.action.sources"]);
 	}
 
 	if (model.reasoning) {
@@ -216,7 +234,7 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 				effort: options?.reasoningEffort || "medium",
 				summary: options?.reasoningSummary || "auto",
 			};
-			params.include = ["reasoning.encrypted_content"];
+			includeValue(params, ["reasoning.encrypted_content"]);
 		} else {
 			if (model.name.startsWith("gpt-5")) {
 				// Jesus Christ, see https://community.openai.com/t/need-reasoning-false-option-for-gpt-5/1351588/7

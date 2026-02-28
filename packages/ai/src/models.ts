@@ -67,6 +67,26 @@ export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
 }
 
 /**
+ * Check if a model supports native OpenAI web_search tool injection.
+ *
+ * Capability is intentionally separate from pricing metadata.
+ */
+export function supportsNativeWebSearch<TApi extends Api>(model: Model<TApi>): boolean {
+	if (model.api === "openai-codex-responses") {
+		return model.provider === "openai-codex";
+	}
+
+	if (model.api !== "openai-responses" || model.provider !== "openai") {
+		return false;
+	}
+
+	// Explicit denylist to keep support decoupled from pricing metadata while
+	// allowing new compatible OpenAI Responses models by default.
+	const explicitlyUnsupportedOpenAIResponsesModels = new Set(["gpt-4.1-nano"]);
+	return !explicitlyUnsupportedOpenAIResponsesModels.has(model.id);
+}
+
+/**
  * Check if two models are equal by comparing both their id and provider.
  * Returns false if either model is null or undefined.
  */

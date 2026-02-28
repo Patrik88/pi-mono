@@ -513,6 +513,8 @@ function buildSessionOptions(
 		options.tools = parsed.tools.map((name) => allTools[name]);
 	}
 
+	options.enableNativeWebSearch = !parsed.noNativeWebSearch;
+
 	return { options, cliThinkingFromModel };
 }
 
@@ -717,7 +719,13 @@ export async function main(args: string[]) {
 		authStorage.setRuntimeApiKey(sessionOptions.model.provider, parsed.apiKey);
 	}
 
-	const { session, modelFallbackMessage } = await createAgentSession(sessionOptions);
+	const { session, modelFallbackMessage, startupWarnings } = await createAgentSession(sessionOptions);
+
+	if (isInteractive && startupWarnings) {
+		for (const warning of startupWarnings) {
+			console.warn(chalk.yellow(`Warning: ${warning}`));
+		}
+	}
 
 	if (!isInteractive && !session.model) {
 		console.error(chalk.red("No models available."));

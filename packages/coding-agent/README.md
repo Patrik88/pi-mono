@@ -461,6 +461,7 @@ pi config                   # Enable/disable package resources
 | `--api-key <key>` | API key (overrides env vars) |
 | `--thinking <level>` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `--models <patterns>` | Comma-separated patterns for Ctrl+P cycling |
+| `--no-native-web-search` | Disable OpenAI native `web_search` tool injection |
 | `--list-models [search]` | List available models |
 
 ### Session Options
