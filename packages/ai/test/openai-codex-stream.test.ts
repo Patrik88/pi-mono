@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { streamOpenAICodexResponses } from "../src/providers/openai-codex-responses.js";
+import { buildRequestBody, streamOpenAICodexResponses } from "../src/providers/openai-codex-responses.js";
 import type { Context, Model } from "../src/types.js";
 
 const originalFetch = global.fetch;
@@ -19,6 +19,81 @@ afterEach(() => {
 });
 
 describe("openai-codex streaming", () => {
+	it("gates native web_search injection in buildRequestBody behind explicit opt-in", () => {
+		const model: Model<"openai-codex-responses"> = {
+			id: "gpt-5.1-codex",
+			name: "GPT-5.1 Codex",
+			api: "openai-codex-responses",
+			provider: "openai-codex",
+			baseUrl: "https://chatgpt.com/backend-api",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 400000,
+			maxTokens: 128000,
+		};
+		const context: Context = {
+			systemPrompt: "You are a helpful assistant.",
+			messages: [{ role: "user", content: "Say hello", timestamp: Date.now() }],
+		};
+
+		const withoutOptIn = buildRequestBody(model, context, {});
+		expect(withoutOptIn.tools).toBeUndefined();
+		expect(withoutOptIn.include).toEqual(["reasoning.encrypted_content"]);
+
+		const withOptIn = buildRequestBody(model, context, { enableNativeWebSearch: true });
+		expect(withOptIn.tools?.some((tool) => tool.type === "web_search")).toBe(true);
+		expect(withOptIn.include).toContain("reasoning.encrypted_content");
+		expect(withOptIn.include).toContain("web_search_call.results");
+		expect(withOptIn.include).toContain("web_search_call.action.sources");
+	});
+
+	it("does not inject native web_search in buildRequestBody for non-codex providers", () => {
+		const model: Model<"openai-codex-responses"> = {
+			id: "gpt-5.1-codex",
+			name: "GPT-5.1 Codex",
+			api: "openai-codex-responses",
+			provider: "openai",
+			baseUrl: "https://chatgpt.com/backend-api",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 400000,
+			maxTokens: 128000,
+		};
+		const context: Context = {
+			systemPrompt: "You are a helpful assistant.",
+			messages: [{ role: "user", content: "Say hello", timestamp: Date.now() }],
+		};
+
+		const body = buildRequestBody(model, context, { enableNativeWebSearch: true });
+		expect(body.tools).toBeUndefined();
+		expect(body.include).toEqual(["reasoning.encrypted_content"]);
+	});
+
+	it("does not inject native web_search for gpt-5 codex when reasoningEffort is minimal", () => {
+		const model: Model<"openai-codex-responses"> = {
+			id: "gpt-5.1-codex",
+			name: "GPT-5.1 Codex",
+			api: "openai-codex-responses",
+			provider: "openai-codex",
+			baseUrl: "https://chatgpt.com/backend-api",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 400000,
+			maxTokens: 128000,
+		};
+		const context: Context = {
+			systemPrompt: "You are a helpful assistant.",
+			messages: [{ role: "user", content: "Say hello", timestamp: Date.now() }],
+		};
+
+		const body = buildRequestBody(model, context, { enableNativeWebSearch: true, reasoningEffort: "minimal" });
+		expect(body.tools).toBeUndefined();
+		expect(body.include).toEqual(["reasoning.encrypted_content"]);
+	});
+
 	it("streams SSE responses into AssistantMessageEventStream", async () => {
 		const tempDir = mkdtempSync(join(tmpdir(), "pi-codex-stream-"));
 		process.env.PI_CODING_AGENT_DIR = tempDir;

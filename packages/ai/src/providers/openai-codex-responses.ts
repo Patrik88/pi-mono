@@ -8,7 +8,7 @@ if (typeof process !== "undefined" && (process.versions?.node || process.version
 
 import type { Tool as OpenAITool, ResponseInput, ResponseStreamEvent } from "openai/resources/responses/responses.js";
 import { getEnvApiKey } from "../env-api-keys.js";
-import { supportsXhigh } from "../models.js";
+import { supportsNativeWebSearch, supportsXhigh } from "../models.js";
 import type {
 	Api,
 	AssistantMessage,
@@ -240,11 +240,19 @@ export const streamSimpleOpenAICodexResponses: StreamFunction<"openai-codex-resp
 // Request Building
 // ============================================================================
 
-function buildRequestBody(
+export function buildRequestBody(
 	model: Model<"openai-codex-responses">,
 	context: Context,
 	options?: OpenAICodexResponsesOptions,
 ): RequestBody {
+	const includeValues = (body: RequestBody, values: string[]): void => {
+		const includeSet = new Set(body.include || []);
+		for (const value of values) {
+			includeSet.add(value);
+		}
+		body.include = Array.from(includeSet);
+	};
+
 	const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
 		includeSystemPrompt: false,
 	});
@@ -266,8 +274,16 @@ function buildRequestBody(
 		body.temperature = options.temperature;
 	}
 
-	if (context.tools) {
-		body.tools = convertResponsesTools(context.tools, { strict: null });
+	const isGpt5Model = model.id === "gpt-5" || model.id.startsWith("gpt-5-") || model.id.startsWith("gpt-5.");
+	const isUnsupportedGpt5MinimalReasoning = isGpt5Model && options?.reasoningEffort === "minimal";
+	const includeNativeWebSearch =
+		options?.enableNativeWebSearch === true && supportsNativeWebSearch(model) && !isUnsupportedGpt5MinimalReasoning;
+	const mappedTools = convertResponsesTools(context.tools ?? [], { strict: null, includeNativeWebSearch });
+	if (mappedTools.length > 0) {
+		body.tools = mappedTools;
+	}
+	if (includeNativeWebSearch) {
+		includeValues(body, ["web_search_call.results", "web_search_call.action.sources"]);
 	}
 
 	if (options?.reasoningEffort !== undefined) {

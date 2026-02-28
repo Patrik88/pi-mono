@@ -39,6 +39,7 @@ export interface Args {
 	noThemes?: boolean;
 	listModels?: string | true;
 	verbose?: boolean;
+	noNativeWebSearch?: boolean;
 	messages: string[];
 	fileArgs: string[];
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
@@ -151,6 +152,8 @@ export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "
 			}
 		} else if (arg === "--verbose") {
 			result.verbose = true;
+		} else if (arg === "--no-native-web-search") {
+			result.noNativeWebSearch = true;
 		} else if (arg.startsWith("@")) {
 			result.fileArgs.push(arg.slice(1)); // Remove @ prefix
 		} else if (arg.startsWith("--") && extensionFlags) {
@@ -205,6 +208,7 @@ ${chalk.bold("Options:")}
   --tools <tools>                Comma-separated list of tools to enable (default: read,bash,edit,write)
                                  Available: read, bash, edit, write, grep, find, ls
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh
+  --no-native-web-search         Disable OpenAI native web_search tool injection
   --extension, -e <path>         Load an extension file (can be used multiple times)
   --no-extensions                Disable extension discovery (explicit -e paths still work)
   --skill <path>                 Load a skill file or directory (can be used multiple times)

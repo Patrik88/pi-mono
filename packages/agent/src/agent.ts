@@ -85,6 +85,12 @@ export interface AgentOptions {
 	 * Default: 60000 (60 seconds). Set to 0 to disable the cap.
 	 */
 	maxRetryDelayMs?: number;
+
+	/**
+	 * Explicit opt-in for native OpenAI web_search on compatible OpenAI Responses models.
+	 * Default: false.
+	 */
+	enableNativeWebSearch?: boolean;
 }
 
 export class Agent {
@@ -115,6 +121,7 @@ export class Agent {
 	private resolveRunningPrompt?: () => void;
 	private _thinkingBudgets?: ThinkingBudgets;
 	private _maxRetryDelayMs?: number;
+	private _enableNativeWebSearch = false;
 
 	constructor(opts: AgentOptions = {}) {
 		this._state = { ...this._state, ...opts.initialState };
@@ -127,6 +134,7 @@ export class Agent {
 		this.getApiKey = opts.getApiKey;
 		this._thinkingBudgets = opts.thinkingBudgets;
 		this._maxRetryDelayMs = opts.maxRetryDelayMs;
+		this._enableNativeWebSearch = opts.enableNativeWebSearch === true;
 	}
 
 	/**
@@ -356,6 +364,7 @@ export class Agent {
 		const config: AgentLoopConfig = {
 			model,
 			reasoning,
+			enableNativeWebSearch: this._enableNativeWebSearch,
 			sessionId: this._sessionId,
 			thinkingBudgets: this._thinkingBudgets,
 			maxRetryDelayMs: this._maxRetryDelayMs,

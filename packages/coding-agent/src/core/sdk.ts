@@ -69,6 +69,8 @@ export interface CreateAgentSessionOptions {
 
 	/** Settings manager. Default: SettingsManager.create(cwd, agentDir) */
 	settingsManager?: SettingsManager;
+	/** Enable OpenAI native web_search tool injection when supported. Default: true */
+	enableNativeWebSearch?: boolean;
 }
 
 /** Result from createAgentSession */
@@ -79,6 +81,8 @@ export interface CreateAgentSessionResult {
 	extensionsResult: LoadExtensionsResult;
 	/** Warning if session was restored with a different model than saved */
 	modelFallbackMessage?: string;
+	/** Startup warnings that callers can surface in their preferred UI */
+	startupWarnings?: string[];
 }
 
 // Re-exports
@@ -238,6 +242,25 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingLevel = "off";
 	}
 
+	const startupWarnings: string[] = [];
+	const nativeWebSearchEnabled = options.enableNativeWebSearch ?? true;
+	const currentModel = model;
+	const supportsNativeWebSearchForWarning =
+		currentModel !== undefined &&
+		((currentModel.api === "openai-responses" && currentModel.provider === "openai") ||
+			(currentModel.api === "openai-codex-responses" && currentModel.provider === "openai-codex"));
+	const isGpt5MinimalReasoning =
+		currentModel !== undefined &&
+		thinkingLevel === "minimal" &&
+		currentModel.id.startsWith("gpt-5") &&
+		supportsNativeWebSearchForWarning &&
+		nativeWebSearchEnabled;
+	if (isGpt5MinimalReasoning) {
+		startupWarnings.push(
+			`Native web search is enabled, but ${currentModel.provider}/${currentModel.id} with thinking level "minimal" bypasses web search. Increase thinking level to low or higher to use native web search.`,
+		);
+	}
+
 	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write"];
 	const initialActiveToolNames: ToolName[] = options.tools
 		? options.tools.map((t) => t.name).filter((n): n is ToolName => n in allTools)
@@ -291,6 +314,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			thinkingLevel,
 			tools: [],
 		},
+		enableNativeWebSearch: nativeWebSearchEnabled,
 		convertToLlm: convertToLlmWithBlockImages,
 		sessionId: sessionManager.getSessionId(),
 		transformContext: async (messages) => {
@@ -361,5 +385,6 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		session,
 		extensionsResult,
 		modelFallbackMessage,
+		startupWarnings: startupWarnings.length > 0 ? startupWarnings : undefined,
 	};
 }
