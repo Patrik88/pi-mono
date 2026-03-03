@@ -1,5 +1,30 @@
 # Development Rules
 
+## Fork Profile Loader
+
+This repository is used as a fork with multiple branch intents.
+
+Before doing any substantial work:
+
+1. Detect current branch:
+   ```bash
+   git rev-parse --abbrev-ref HEAD
+   ```
+2. Read `AGENTS.FORK.md`.
+3. Then read exactly one profile file based on branch:
+   - `pg/core/*` -> `AGENTS.CORE_PR.md`
+   - `pg/ext/*`, `pg/private/*`, `pg/daily`, `dev/*`, `codex/*` -> `AGENTS.EXTENSION.md`
+   - other branches -> default to `AGENTS.CORE_PR.md`
+4. Read `PI_MONO_WORKFLOW_CHEAT_SHEET.md` and follow it for branch flow (`sync/main`/`pg/daily`/`pg/core`).
+5. If `PI_MONO_WORKFLOW_CHEAT_SHEET.md` conflicts with any `AGENTS*.md` rule, follow `AGENTS*.md`.
+
+Precedence:
+
+1. User request in current conversation
+2. `CONTRIBUTING.md` (for anything intended for upstream PR)
+3. Branch profile file above
+4. This `AGENTS.md`
+
 ## First Message
 If the user did not give you a concrete task in their first message,
 read README.md, then ask which module(s) to work on. Based on the answer, read the relevant README.md files in parallel.
@@ -22,8 +47,10 @@ read README.md, then ask which module(s) to work on. Based on the answer, read t
 ## Commands
 - After code changes (not documentation changes): `npm run check` (get full output, no tail). Fix all errors, warnings, and infos before committing.
 - Note: `npm run check` does not run tests.
-- NEVER run: `npm run dev`, `npm run build`, `npm test`
-- Only run specific tests if user instructs: `npx tsx ../../node_modules/vitest/dist/cli.js --run test/specific.test.ts`
+- NEVER run: `npm run dev`, `npm test`
+- Default: do not run `npm run build` unless the active branch profile explicitly allows it (see `AGENTS.FORK.md` / `AGENTS.EXTENSION.md`) or the user explicitly asks.
+- Default: only run specific tests if user instructs: `npx tsx ../../node_modules/vitest/dist/cli.js --run test/specific.test.ts`
+- On branches using `AGENTS.EXTENSION.md`, targeted tests for touched packages are expected as part of local validation.
 - Run tests from the package root, not the repo root.
 - If you create or modify a test file, you MUST run that test file and iterate until it passes.
 - When writing tests, run them, identify issues in either the test or implementation, and iterate until fixed.
@@ -62,9 +89,13 @@ When closing issues via commit:
 - This automatically closes the issue when the commit is merged
 
 ## PR Workflow
-- Analyze PRs without pulling locally first
-- If the user approves: create a feature branch, pull PR, rebase on main, apply adjustments, commit, merge into main, push, close PR, and leave a comment in the user's tone
-- You never open PRs yourself. We work in feature branches until everything is according to the user's requirements, then merge into main, and push.
+- Keep `sync/main` as the read-only mirror of `upstream/main`.
+- For upstream candidates, branch from `sync/main` into `pg/core/<topic>`.
+- For daily runtime usage, integrate finished work into `pg/daily`:
+  - `pg/core/*` changes via `cherry-pick`
+  - `pg/ext/*` / `pg/private/*` via `merge --no-ff` when you want the full feature history
+- Do not push directly to `upstream`.
+- Do not open PRs yourself unless the user explicitly asks.
 
 ## Tools
 - GitHub CLI for issues/PRs
