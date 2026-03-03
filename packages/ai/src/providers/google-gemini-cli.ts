@@ -72,7 +72,7 @@ const GEMINI_CLI_HEADERS = {
 };
 
 // Headers for Antigravity (sandbox endpoint) - requires specific User-Agent
-const DEFAULT_ANTIGRAVITY_VERSION = "1.15.8";
+const DEFAULT_ANTIGRAVITY_VERSION = "1.19.4";
 
 function getAntigravityHeaders() {
 	const version = process.env.PI_AI_ANTIGRAVITY_VERSION || DEFAULT_ANTIGRAVITY_VERSION;
@@ -207,6 +207,14 @@ export function extractRetryDelay(errorText: string, response?: Response | Heade
 function isClaudeThinkingModel(modelId: string): boolean {
 	const normalized = modelId.toLowerCase();
 	return normalized.includes("claude") && normalized.includes("thinking");
+}
+
+function isGemini3FamilyModel(modelId: string): boolean {
+	return modelId.startsWith("gemini-3");
+}
+
+function isGemini3ProFamilyModel(modelId: string): boolean {
+	return isGemini3FamilyModel(modelId) && modelId.includes("-pro");
 }
 
 /**
@@ -794,7 +802,7 @@ export const streamSimpleGoogleGeminiCli: StreamFunction<"google-gemini-cli", Si
 	}
 
 	const effort = clampReasoning(options.reasoning)!;
-	if (model.id.includes("3-pro") || model.id.includes("3-flash")) {
+	if (isGemini3FamilyModel(model.id)) {
 		return streamGoogleGeminiCli(model, context, {
 			...base,
 			thinking: {
@@ -917,7 +925,7 @@ export function buildRequest(
 type ClampedThinkingLevel = Exclude<ThinkingLevel, "xhigh">;
 
 function getGeminiCliThinkingLevel(effort: ClampedThinkingLevel, modelId: string): GoogleThinkingLevel {
-	if (modelId.includes("3-pro")) {
+	if (isGemini3ProFamilyModel(modelId)) {
 		switch (effort) {
 			case "minimal":
 			case "low":
