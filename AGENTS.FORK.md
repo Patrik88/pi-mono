@@ -47,3 +47,11 @@ When type mismatches suggest stale `dist/*.d.ts`:
   - `pg/core/*` -> prefer `git cherry-pick <commit>` (keep PR history clean)
   - `pg/ext/*` / `pg/private/*` -> prefer `git merge --no-ff <branch>` (keep feature history intact)
 - Never commit directly on `sync/main`.
+
+## Worktree Guidance
+
+- Prefer one active task per worktree.
+- If parallel agents are working, use separate worktrees per branch/task to avoid accidental cross-edits.
+- If the user gives an explicit worktree path, treat it as authoritative.
+- Keep branch/worktree mapping clear (for example `pg/ext/<topic>` -> `../pi-mono-pg-ext-<topic>`).
+- Do not remove/prune worktrees you did not create unless the user explicitly asks.

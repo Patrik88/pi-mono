@@ -67,6 +67,52 @@ cd ../agent && npm run build
 cd ../coding-agent && npm run clean && npm run build
 ```
 
+## npm link (lokal runtime av `pi`)
+
+När du vill köra din lokala `packages/coding-agent` som global `pi`:
+
+```bash
+cd packages/coding-agent
+npm run clean
+npm run build
+npm link
+```
+
+Verifiera vilken binär som används:
+
+```bash
+which pi
+pi --version
+```
+
+Viktigt:
+- `npm link` pekar på den worktree-path där du körde kommandot.
+- Byter du branch i samma worktree måste du bygga igen innan test.
+- Vill du ha en stabil länkad runtime medan du jobbar på andra brancher, använd en separat worktree för den länkade branchen.
+
+## Worktrees (rekommenderat vid parallella uppgifter)
+
+Skapa en separat worktree för en ny uppgift/agent:
+
+```bash
+git fetch upstream --prune --tags
+git worktree add ../pi-mono-pg-ext-<topic> -b pg/ext/<topic> sync/main
+```
+
+Använd befintlig branch i ny worktree:
+
+```bash
+git worktree add ../pi-mono-pg-daily pg/daily
+```
+
+Översikt och städning:
+
+```bash
+git worktree list
+git worktree remove ../pi-mono-pg-ext-<topic>
+git worktree prune
+```
+
 ## Verifiering före PR
 
 Körs bäst från den isolerade `pg/core/*`-branchen innan du pushar.
