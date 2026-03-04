@@ -234,6 +234,18 @@ describe("parseArgs", () => {
 		});
 	});
 
+	describe("--native-web-search flag", () => {
+		test("parses --native-web-search flag", () => {
+			const result = parseArgs(["--native-web-search"]);
+			expect(result.enableNativeWebSearch).toBe(true);
+		});
+
+		test("parses --no-native-web-search flag", () => {
+			const result = parseArgs(["--no-native-web-search"]);
+			expect(result.enableNativeWebSearch).toBe(false);
+		});
+	});
+
 	describe("--no-tools flag", () => {
 		test("parses --no-tools flag", () => {
 			const result = parseArgs(["--no-tools"]);

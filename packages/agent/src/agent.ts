@@ -91,6 +91,12 @@ export interface AgentOptions {
 	 * Default: 60000 (60 seconds). Set to 0 to disable the cap.
 	 */
 	maxRetryDelayMs?: number;
+
+	/**
+	 * Enable provider-native web search when supported by the selected model/provider.
+	 * Defaults to false when unset.
+	 */
+	enableNativeWebSearch?: boolean;
 }
 
 export class Agent {
@@ -122,6 +128,7 @@ export class Agent {
 	private _thinkingBudgets?: ThinkingBudgets;
 	private _transport: Transport;
 	private _maxRetryDelayMs?: number;
+	private _enableNativeWebSearch?: boolean;
 
 	constructor(opts: AgentOptions = {}) {
 		this._state = { ...this._state, ...opts.initialState };
@@ -135,6 +142,7 @@ export class Agent {
 		this._thinkingBudgets = opts.thinkingBudgets;
 		this._transport = opts.transport ?? "sse";
 		this._maxRetryDelayMs = opts.maxRetryDelayMs;
+		this._enableNativeWebSearch = opts.enableNativeWebSearch;
 	}
 
 	/**
@@ -430,6 +438,7 @@ export class Agent {
 			reasoning,
 			sessionId: this._sessionId,
 			transport: this._transport,
+			enableNativeWebSearch: this._enableNativeWebSearch,
 			thinkingBudgets: this._thinkingBudgets,
 			maxRetryDelayMs: this._maxRetryDelayMs,
 			convertToLlm: this.convertToLlm,

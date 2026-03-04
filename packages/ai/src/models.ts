@@ -1,7 +1,13 @@
 import { MODELS } from "./models.generated.js";
-import type { Api, KnownProvider, Model, Usage } from "./types.js";
+import type { Api, Model, Usage } from "./types.js";
 
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
+const OPENAI_NATIVE_WEB_SEARCH_APIS = new Set<Api>([
+	"openai-responses",
+	"azure-openai-responses",
+	"openai-codex-responses",
+]);
+const GOOGLE_NATIVE_WEB_SEARCH_APIS = new Set<Api>(["google-generative-ai", "google-gemini-cli", "google-vertex"]);
 
 // Initialize registry from MODELS on module load
 for (const [provider, models] of Object.entries(MODELS)) {
@@ -13,11 +19,13 @@ for (const [provider, models] of Object.entries(MODELS)) {
 }
 
 type ModelApi<
-	TProvider extends KnownProvider,
+	TProvider extends RegisteredProvider,
 	TModelId extends keyof (typeof MODELS)[TProvider],
 > = (typeof MODELS)[TProvider][TModelId] extends { api: infer TApi } ? (TApi extends Api ? TApi : never) : never;
 
-export function getModel<TProvider extends KnownProvider, TModelId extends keyof (typeof MODELS)[TProvider]>(
+type RegisteredProvider = keyof typeof MODELS;
+
+export function getModel<TProvider extends RegisteredProvider, TModelId extends keyof (typeof MODELS)[TProvider]>(
 	provider: TProvider,
 	modelId: TModelId,
 ): Model<ModelApi<TProvider, TModelId>> {
@@ -25,11 +33,11 @@ export function getModel<TProvider extends KnownProvider, TModelId extends keyof
 	return providerModels?.get(modelId as string) as Model<ModelApi<TProvider, TModelId>>;
 }
 
-export function getProviders(): KnownProvider[] {
-	return Array.from(modelRegistry.keys()) as KnownProvider[];
+export function getProviders(): RegisteredProvider[] {
+	return Array.from(modelRegistry.keys()) as RegisteredProvider[];
 }
 
-export function getModels<TProvider extends KnownProvider>(
+export function getModels<TProvider extends RegisteredProvider>(
 	provider: TProvider,
 ): Model<ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>>[] {
 	const models = modelRegistry.get(provider);
@@ -41,8 +49,58 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
 	usage.cost.output = (model.cost.output / 1000000) * usage.output;
 	usage.cost.cacheRead = (model.cost.cacheRead / 1000000) * usage.cacheRead;
 	usage.cost.cacheWrite = (model.cost.cacheWrite / 1000000) * usage.cacheWrite;
-	usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
+	let webSearchCost = 0;
+	const hasWebSearchTracking =
+		usage.webSearchCalls !== undefined ||
+		model.cost.webSearchPerCall !== undefined ||
+		usage.cost.webSearch !== undefined;
+	if (hasWebSearchTracking) {
+		webSearchCost = (model.cost.webSearchPerCall ?? 0) * (usage.webSearchCalls ?? 0);
+		usage.cost.webSearch = webSearchCost;
+	}
+	usage.cost.total =
+		usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite + webSearchCost;
 	return usage.cost;
+}
+
+function isLikelyOpenAINativeWebSearchModel(modelId: string): boolean {
+	const normalized = modelId.toLowerCase();
+	return (
+		normalized.startsWith("gpt-") ||
+		normalized.startsWith("o1") ||
+		normalized.startsWith("o3") ||
+		normalized.startsWith("o4") ||
+		normalized.includes("/gpt-") ||
+		normalized.includes("/o1") ||
+		normalized.includes("/o3") ||
+		normalized.includes("/o4")
+	);
+}
+
+function isLikelyGeminiModel(modelId: string): boolean {
+	const normalized = modelId.toLowerCase();
+	return normalized.startsWith("gemini-") || normalized.includes("/gemini-");
+}
+
+/**
+ * Provider-agnostic capability check for native provider web search.
+ * This policy is intentionally independent from pricing metadata.
+ */
+export function supportsNativeWebSearch<TApi extends Api>(model: Model<TApi>): boolean {
+	if (OPENAI_NATIVE_WEB_SEARCH_APIS.has(model.api)) {
+		return isLikelyOpenAINativeWebSearchModel(model.id);
+	}
+	if (GOOGLE_NATIVE_WEB_SEARCH_APIS.has(model.api)) {
+		return isLikelyGeminiModel(model.id);
+	}
+	return false;
+}
+
+export function shouldEnableNativeWebSearch<TApi extends Api>(
+	model: Model<TApi>,
+	enableNativeWebSearch: boolean | undefined,
+): boolean {
+	return enableNativeWebSearch === true && supportsNativeWebSearch(model);
 }
 
 /**

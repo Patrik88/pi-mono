@@ -16,6 +16,7 @@ export interface Args {
 	systemPrompt?: string;
 	appendSystemPrompt?: string;
 	thinking?: ThinkingLevel;
+	enableNativeWebSearch?: boolean;
 	continue?: boolean;
 	resume?: boolean;
 	help?: boolean;
@@ -119,6 +120,10 @@ export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "
 					),
 				);
 			}
+		} else if (arg === "--native-web-search") {
+			result.enableNativeWebSearch = true;
+		} else if (arg === "--no-native-web-search") {
+			result.enableNativeWebSearch = false;
 		} else if (arg === "--print" || arg === "-p") {
 			result.print = true;
 		} else if (arg === "--export" && i + 1 < args.length) {
@@ -209,6 +214,8 @@ ${chalk.bold("Options:")}
   --tools <tools>                Comma-separated list of tools to enable (default: read,bash,edit,write)
                                  Available: read, bash, edit, write, grep, find, ls
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh
+  --native-web-search            Enable provider-native web search (OpenAI/Google when supported)
+  --no-native-web-search         Disable provider-native web search
   --extension, -e <path>         Load an extension file (can be used multiple times)
   --no-extensions, -ne           Disable extension discovery (explicit -e paths still work)
   --skill <path>                 Load a skill file or directory (can be used multiple times)

@@ -5,7 +5,7 @@
  */
 
 import type { Content, ThinkingConfig } from "@google/genai";
-import { calculateCost } from "../models.js";
+import { calculateCost, shouldEnableNativeWebSearch } from "../models.js";
 import type {
 	Api,
 	AssistantMessage,
@@ -25,6 +25,8 @@ import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import {
 	convertMessages,
 	convertTools,
+	extractNativeWebSearchSignalsFromGroundingMetadata,
+	extractNativeWebSearchSignalsFromPart,
 	isThinkingPart,
 	mapStopReasonString,
 	mapToolChoice,
@@ -231,6 +233,11 @@ function isRetryableError(status: number, errorText: string): boolean {
 	return /resource.?exhausted|rate.?limit|overloaded|service.?unavailable|other.?side.?closed/i.test(errorText);
 }
 
+function isUnsupportedNativeSearchToolError(status: number, errorText: string): boolean {
+	if (status !== 400) return false;
+	return /unsupported.+tool|unsupported.+field|unrecognized.+field|unknown.+field|google.?search/i.test(errorText);
+}
+
 /**
  * Extract a clean, user-friendly error message from Google API error response.
  * Parses JSON error responses and returns just the message field.
@@ -297,6 +304,10 @@ interface CloudCodeAssistResponseChunk {
 					text?: string;
 					thought?: boolean;
 					thoughtSignature?: string;
+					googleSearchCall?: unknown;
+					googleSearchResult?: unknown;
+					google_search_call?: unknown;
+					google_search_result?: unknown;
 					functionCall?: {
 						name: string;
 						args: Record<string, unknown>;
@@ -305,6 +316,7 @@ interface CloudCodeAssistResponseChunk {
 				}>;
 			};
 			finishReason?: string;
+			groundingMetadata?: unknown;
 		}>;
 		usageMetadata?: {
 			promptTokenCount?: number;
@@ -339,7 +351,8 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 				cacheRead: 0,
 				cacheWrite: 0,
 				totalTokens: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				webSearchCalls: 0,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, webSearch: 0, total: 0 },
 			},
 			stopReason: "stop",
 			timestamp: Date.now(),
@@ -370,10 +383,40 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 			const isAntigravity = model.provider === "google-antigravity";
 			const baseUrl = model.baseUrl?.trim();
 			const endpoints = baseUrl ? [baseUrl] : isAntigravity ? ANTIGRAVITY_ENDPOINT_FALLBACKS : [DEFAULT_ENDPOINT];
-
-			const requestBody = buildRequest(model, context, projectId, options, isAntigravity);
+			const nativeWebSearchRequested = shouldEnableNativeWebSearch(model, options?.enableNativeWebSearch);
+			let nativeWebSearchEnabled = nativeWebSearchRequested;
+			let requestBody = buildRequest(model, context, projectId, options, isAntigravity, nativeWebSearchEnabled);
 			options?.onPayload?.(requestBody);
 			const headers = isAntigravity ? getAntigravityHeaders() : GEMINI_CLI_HEADERS;
+			let started = false;
+			const ensureStarted = () => {
+				if (!started) {
+					stream.push({ type: "start", partial: output });
+					started = true;
+				}
+			};
+			const emitFallbackWarning = (message: string) => {
+				console.warn(message);
+				ensureStarted();
+				const warningBlock: ThinkingContent = {
+					type: "thinking",
+					thinking: message,
+				};
+				output.content.push(warningBlock);
+				stream.push({ type: "thinking_start", contentIndex: output.content.length - 1, partial: output });
+				stream.push({
+					type: "thinking_delta",
+					contentIndex: output.content.length - 1,
+					delta: message,
+					partial: output,
+				});
+				stream.push({
+					type: "thinking_end",
+					contentIndex: output.content.length - 1,
+					content: message,
+					partial: output,
+				});
+			};
 
 			const requestHeaders = {
 				Authorization: `Bearer ${accessToken}`,
@@ -383,7 +426,7 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 				...(isClaudeThinkingModel(model.id) ? { "anthropic-beta": CLAUDE_THINKING_BETA_HEADER } : {}),
 				...options?.headers,
 			};
-			const requestBodyJson = JSON.stringify(requestBody);
+			let requestBodyJson = JSON.stringify(requestBody);
 
 			// Fetch with retry logic for rate limits and transient errors
 			let response: Response | undefined;
@@ -410,6 +453,22 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 					}
 
 					const errorText = await response.text();
+					if (
+						isAntigravity &&
+						nativeWebSearchEnabled &&
+						isUnsupportedNativeSearchToolError(response.status, errorText)
+					) {
+						nativeWebSearchEnabled = false;
+						const warning =
+							"[google-antigravity] Native web search tool is unsupported by this endpoint; retrying without native web search.";
+						emitFallbackWarning(warning);
+						requestBody = buildRequest(model, context, projectId, options, isAntigravity, false);
+						options?.onPayload?.(requestBody);
+						requestBodyJson = JSON.stringify(requestBody);
+						if (attempt < MAX_RETRIES) {
+							continue;
+						}
+					}
 
 					// Check if retryable
 					if (attempt < MAX_RETRIES && isRetryableError(response.status, errorText)) {
@@ -458,14 +517,6 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 				throw lastError ?? new Error("Failed to get response after retries");
 			}
 
-			let started = false;
-			const ensureStarted = () => {
-				if (!started) {
-					stream.push({ type: "start", partial: output });
-					started = true;
-				}
-			};
-
 			const resetOutput = () => {
 				output.content = [];
 				output.usage = {
@@ -474,12 +525,15 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 					cacheRead: 0,
 					cacheWrite: 0,
 					totalTokens: 0,
-					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					webSearchCalls: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, webSearch: 0, total: 0 },
 				};
 				output.stopReason = "stop";
 				output.errorMessage = undefined;
 				output.timestamp = Date.now();
-				started = false;
+				if (output.content.length === 0) {
+					started = false;
+				}
 			};
 
 			const streamResponse = async (activeResponse: Response): Promise<boolean> => {
@@ -491,6 +545,43 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 				let currentBlock: TextContent | ThinkingContent | null = null;
 				const blocks = output.content;
 				const blockIndex = () => blocks.length - 1;
+				const emittedSearchSignals = new Set<string>();
+				const closeCurrentBlock = () => {
+					if (!currentBlock) return;
+					if (currentBlock.type === "text") {
+						stream.push({
+							type: "text_end",
+							contentIndex: blockIndex(),
+							content: currentBlock.text,
+							partial: output,
+						});
+					} else {
+						stream.push({
+							type: "thinking_end",
+							contentIndex: blockIndex(),
+							content: currentBlock.thinking,
+							partial: output,
+						});
+					}
+					currentBlock = null;
+				};
+				const emitNativeWebSearchSignal = (signature: string, message: string, webSearchCallsIncrement: number) => {
+					if (!message || emittedSearchSignals.has(signature)) return;
+					emittedSearchSignals.add(signature);
+					closeCurrentBlock();
+					ensureStarted();
+					const searchBlock: ThinkingContent = {
+						type: "thinking",
+						thinking: message,
+					};
+					output.content.push(searchBlock);
+					stream.push({ type: "thinking_start", contentIndex: blockIndex(), partial: output });
+					stream.push({ type: "thinking_delta", contentIndex: blockIndex(), delta: message, partial: output });
+					stream.push({ type: "thinking_end", contentIndex: blockIndex(), content: message, partial: output });
+					output.usage.webSearchCalls = (output.usage.webSearchCalls ?? 0) + webSearchCallsIncrement;
+					calculateCost(model, output.usage);
+					hasContent = true;
+				};
 
 				// Read SSE stream
 				const reader = activeResponse.body.getReader();
@@ -537,6 +628,14 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 							const candidate = responseData.candidates?.[0];
 							if (candidate?.content?.parts) {
 								for (const part of candidate.content.parts) {
+									for (const signal of extractNativeWebSearchSignalsFromPart(part)) {
+										emitNativeWebSearchSignal(
+											signal.signature,
+											signal.message,
+											signal.webSearchCallsIncrement,
+										);
+									}
+
 									if (part.text !== undefined) {
 										hasContent = true;
 										const isThinking = isThinkingPart(part);
@@ -545,23 +644,7 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 											(isThinking && currentBlock.type !== "thinking") ||
 											(!isThinking && currentBlock.type !== "text")
 										) {
-											if (currentBlock) {
-												if (currentBlock.type === "text") {
-													stream.push({
-														type: "text_end",
-														contentIndex: blocks.length - 1,
-														content: currentBlock.text,
-														partial: output,
-													});
-												} else {
-													stream.push({
-														type: "thinking_end",
-														contentIndex: blockIndex(),
-														content: currentBlock.thinking,
-														partial: output,
-													});
-												}
-											}
+											closeCurrentBlock();
 											if (isThinking) {
 												currentBlock = { type: "thinking", thinking: "", thinkingSignature: undefined };
 												output.content.push(currentBlock);
@@ -607,24 +690,7 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 
 									if (part.functionCall) {
 										hasContent = true;
-										if (currentBlock) {
-											if (currentBlock.type === "text") {
-												stream.push({
-													type: "text_end",
-													contentIndex: blockIndex(),
-													content: currentBlock.text,
-													partial: output,
-												});
-											} else {
-												stream.push({
-													type: "thinking_end",
-													contentIndex: blockIndex(),
-													content: currentBlock.thinking,
-													partial: output,
-												});
-											}
-											currentBlock = null;
-										}
+										closeCurrentBlock();
 
 										const providedId = part.functionCall.id;
 										const needsNewId =
@@ -660,6 +726,11 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 									}
 								}
 							}
+							for (const signal of extractNativeWebSearchSignalsFromGroundingMetadata(
+								candidate?.groundingMetadata,
+							)) {
+								emitNativeWebSearchSignal(signal.signature, signal.message, signal.webSearchCallsIncrement);
+							}
 
 							if (candidate?.finishReason) {
 								output.stopReason = mapStopReasonString(candidate.finishReason);
@@ -680,11 +751,13 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 									cacheRead: cacheReadTokens,
 									cacheWrite: 0,
 									totalTokens: responseData.usageMetadata.totalTokenCount || 0,
+									webSearchCalls: output.usage.webSearchCalls ?? 0,
 									cost: {
 										input: 0,
 										output: 0,
 										cacheRead: 0,
 										cacheWrite: 0,
+										webSearch: 0,
 										total: 0,
 									},
 								};
@@ -696,23 +769,7 @@ export const streamGoogleGeminiCli: StreamFunction<"google-gemini-cli", GoogleGe
 					options?.signal?.removeEventListener("abort", abortHandler);
 				}
 
-				if (currentBlock) {
-					if (currentBlock.type === "text") {
-						stream.push({
-							type: "text_end",
-							contentIndex: blockIndex(),
-							content: currentBlock.text,
-							partial: output,
-						});
-					} else {
-						stream.push({
-							type: "thinking_end",
-							contentIndex: blockIndex(),
-							content: currentBlock.thinking,
-							partial: output,
-						});
-					}
-				}
+				closeCurrentBlock();
 
 				return hasContent;
 			};
@@ -848,8 +905,11 @@ export function buildRequest(
 	projectId: string,
 	options: GoogleGeminiCliOptions = {},
 	isAntigravity = false,
+	nativeWebSearchEnabledOverride?: boolean,
 ): CloudCodeAssistRequest {
 	const contents = convertMessages(model, context);
+	const nativeWebSearchEnabled =
+		nativeWebSearchEnabledOverride ?? shouldEnableNativeWebSearch(model, options.enableNativeWebSearch);
 
 	const generationConfig: CloudCodeAssistRequest["request"]["generationConfig"] = {};
 	if (options.temperature !== undefined) {
@@ -890,18 +950,23 @@ export function buildRequest(
 		request.generationConfig = generationConfig;
 	}
 
-	if (context.tools && context.tools.length > 0) {
-		// Claude models on Cloud Code Assist need the legacy `parameters` field;
-		// the API translates it into Anthropic's `input_schema`.
-		const useParameters = model.id.startsWith("claude-");
-		request.tools = convertTools(context.tools, useParameters);
-		if (options.toolChoice) {
-			request.toolConfig = {
-				functionCallingConfig: {
-					mode: mapToolChoice(options.toolChoice),
-				},
-			};
-		}
+	const functionTools = context.tools ?? [];
+	// Claude models on Cloud Code Assist need the legacy `parameters` field;
+	// the API translates it into Anthropic's `input_schema`.
+	const useParameters = model.id.startsWith("claude-");
+	const requestTools = convertTools(functionTools, {
+		useParameters,
+		enableNativeWebSearch: nativeWebSearchEnabled,
+	});
+	if (requestTools) {
+		request.tools = requestTools;
+	}
+	if (functionTools.length > 0 && options.toolChoice) {
+		request.toolConfig = {
+			functionCallingConfig: {
+				mode: mapToolChoice(options.toolChoice),
+			},
+		};
 	}
 
 	if (isAntigravity) {

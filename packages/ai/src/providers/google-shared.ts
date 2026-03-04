@@ -2,8 +2,14 @@
  * Shared utilities for Google Generative AI and Google Cloud Code Assist providers.
  */
 
-import { type Content, FinishReason, FunctionCallingConfigMode, type Part } from "@google/genai";
-import type { Context, ImageContent, Model, StopReason, TextContent, Tool } from "../types.js";
+import {
+	type Content,
+	FinishReason,
+	FunctionCallingConfigMode,
+	type Tool as GoogleTool,
+	type Part,
+} from "@google/genai";
+import type { Context, ImageContent, Model, Tool as PiTool, StopReason, TextContent } from "../types.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import { transformMessages } from "./transform-messages.js";
 
@@ -40,6 +46,138 @@ export function isThinkingPart(part: Pick<Part, "thought" | "thoughtSignature">)
 export function retainThoughtSignature(existing: string | undefined, incoming: string | undefined): string | undefined {
 	if (typeof incoming === "string" && incoming.length > 0) return incoming;
 	return existing;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function asString(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const values = value.map((item) => asString(item)).filter((item): item is string => item !== undefined);
+	return values.length > 0 ? values : undefined;
+}
+
+function summarizeSources(chunks: unknown): string | undefined {
+	if (!Array.isArray(chunks)) return undefined;
+	const sources: string[] = [];
+	for (const chunk of chunks) {
+		if (!isRecord(chunk)) continue;
+		const web = isRecord(chunk.web) ? chunk.web : undefined;
+		const retrievedContext = isRecord(chunk.retrievedContext) ? chunk.retrievedContext : undefined;
+		const title = asString(web?.title) ?? asString(retrievedContext?.title);
+		const uri = asString(web?.uri) ?? asString(retrievedContext?.uri);
+		if (!title && !uri) continue;
+		sources.push(title && uri ? `${title} (${uri})` : (title ?? uri)!);
+		if (sources.length >= 3) break;
+	}
+	return sources.length > 0 ? sources.join(" | ") : undefined;
+}
+
+function summarizeSearchResults(results: unknown): string | undefined {
+	if (!Array.isArray(results)) return undefined;
+	const summarized: string[] = [];
+	for (const result of results) {
+		if (!isRecord(result)) continue;
+		const title = asString(result.title);
+		const uri = asString(result.uri) ?? asString(result.url) ?? asString(result.link);
+		if (!title && !uri) continue;
+		summarized.push(title && uri ? `${title} (${uri})` : (title ?? uri)!);
+		if (summarized.length >= 3) break;
+	}
+	return summarized.length > 0 ? summarized.join(" | ") : undefined;
+}
+
+function stringifyStable(value: unknown): string {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+export interface NativeWebSearchSignal {
+	signature: string;
+	message: string;
+	webSearchCallsIncrement: number;
+}
+
+export function extractNativeWebSearchSignalsFromPart(part: Part): NativeWebSearchSignal[] {
+	const record = part as Part & {
+		googleSearchCall?: unknown;
+		googleSearchResult?: unknown;
+		google_search_call?: unknown;
+		google_search_result?: unknown;
+	};
+	const signals: NativeWebSearchSignal[] = [];
+
+	const searchCall = record.googleSearchCall ?? record.google_search_call;
+	if (searchCall !== undefined) {
+		const query =
+			isRecord(searchCall) && asString(searchCall.query ?? searchCall.searchQuery ?? searchCall.search_query);
+		const summary = query ? `query: ${query}` : "query sent";
+		signals.push({
+			signature: `part-call:${query ?? stringifyStable(searchCall)}`,
+			message: `[Native web search] ${summary}.`,
+			webSearchCallsIncrement: 1,
+		});
+	}
+
+	const searchResult = record.googleSearchResult ?? record.google_search_result;
+	if (searchResult !== undefined) {
+		const resultSummary = isRecord(searchResult)
+			? (summarizeSearchResults(searchResult.result ?? searchResult.results ?? searchResult.items ?? []) ??
+				summarizeSources(searchResult.result ?? searchResult.results ?? searchResult.items ?? []))
+			: undefined;
+		signals.push({
+			signature: `part-result:${resultSummary ?? stringifyStable(searchResult)}`,
+			message: resultSummary
+				? `[Native web search] results: ${resultSummary}`
+				: "[Native web search] result received.",
+			webSearchCallsIncrement: 0,
+		});
+	}
+
+	return signals;
+}
+
+export function extractNativeWebSearchSignalsFromGroundingMetadata(
+	groundingMetadata: unknown,
+): NativeWebSearchSignal[] {
+	if (!isRecord(groundingMetadata)) return [];
+	const signals: NativeWebSearchSignal[] = [];
+
+	const queries = asStringArray(groundingMetadata.webSearchQueries ?? groundingMetadata.web_search_queries);
+	if (queries) {
+		signals.push({
+			signature: `grounding-queries:${queries.join("|")}`,
+			message: `[Native web search] grounding queries: ${queries.join(" | ")}`,
+			webSearchCallsIncrement: 1,
+		});
+	}
+
+	const sourceSummary = summarizeSources(groundingMetadata.groundingChunks ?? groundingMetadata.grounding_chunks);
+	if (sourceSummary) {
+		signals.push({
+			signature: `grounding-sources:${sourceSummary}`,
+			message: `[Native web search] sources: ${sourceSummary}`,
+			webSearchCallsIncrement: 0,
+		});
+	}
+
+	if (signals.length === 0) {
+		signals.push({
+			signature: `grounding-present:${stringifyStable(groundingMetadata)}`,
+			message: "[Native web search] grounding metadata received.",
+			webSearchCallsIncrement: 1,
+		});
+	}
+
+	return signals;
 }
 
 // Thought signatures must be base64 for Google APIs (TYPE_BYTES).
@@ -238,20 +376,49 @@ export function convertMessages<T extends GoogleApiType>(model: Model<T>, contex
  * field instead (OpenAPI 3.03 Schema). This is needed for Cloud Code Assist with Claude
  * models, where the API translates `parameters` into Anthropic's `input_schema`.
  */
+export interface ConvertGoogleToolsOptions {
+	useParameters?: boolean;
+	enableNativeWebSearch?: boolean;
+}
+
+function resolveConvertGoogleToolsOptions(
+	optionsOrUseParameters: boolean | ConvertGoogleToolsOptions,
+): ConvertGoogleToolsOptions {
+	if (typeof optionsOrUseParameters === "boolean") {
+		return { useParameters: optionsOrUseParameters };
+	}
+	return optionsOrUseParameters;
+}
+
 export function convertTools(
-	tools: Tool[],
-	useParameters = false,
-): { functionDeclarations: Record<string, unknown>[] }[] | undefined {
-	if (tools.length === 0) return undefined;
-	return [
-		{
+	tools: PiTool[],
+	optionsOrUseParameters: boolean | ConvertGoogleToolsOptions = false,
+): GoogleTool[] | undefined {
+	const options = resolveConvertGoogleToolsOptions(optionsOrUseParameters);
+	const useParameters = options.useParameters ?? false;
+	const enableNativeWebSearch = options.enableNativeWebSearch === true;
+
+	const convertedTools: GoogleTool[] = [];
+
+	if (tools.length > 0) {
+		convertedTools.push({
 			functionDeclarations: tools.map((tool) => ({
 				name: tool.name,
 				description: tool.description,
 				...(useParameters ? { parameters: tool.parameters } : { parametersJsonSchema: tool.parameters }),
-			})),
-		},
-	];
+			})) as NonNullable<GoogleTool["functionDeclarations"]>,
+		});
+	}
+
+	if (enableNativeWebSearch) {
+		convertedTools.push({ googleSearch: {} });
+	}
+
+	if (convertedTools.length === 0) {
+		return undefined;
+	}
+
+	return convertedTools;
 }
 
 /**

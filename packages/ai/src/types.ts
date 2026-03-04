@@ -62,6 +62,11 @@ export interface StreamOptions {
 	signal?: AbortSignal;
 	apiKey?: string;
 	/**
+	 * Enables provider-native web search tools when supported by the selected model/provider.
+	 * Default: false.
+	 */
+	enableNativeWebSearch?: boolean;
+	/**
 	 * Preferred transport for providers that support multiple transports.
 	 * Providers that do not support this option ignore it.
 	 */
@@ -155,11 +160,13 @@ export interface Usage {
 	cacheRead: number;
 	cacheWrite: number;
 	totalTokens: number;
+	webSearchCalls?: number;
 	cost: {
 		input: number;
 		output: number;
 		cacheRead: number;
 		cacheWrite: number;
+		webSearch?: number;
 		total: number;
 	};
 }
@@ -302,6 +309,7 @@ export interface Model<TApi extends Api> {
 		output: number; // $/million tokens
 		cacheRead: number; // $/million tokens
 		cacheWrite: number; // $/million tokens
+		webSearchPerCall?: number; // $/web search call
 	};
 	contextWindow: number;
 	maxTokens: number;

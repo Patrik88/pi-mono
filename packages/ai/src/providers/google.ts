@@ -5,7 +5,7 @@ import {
 	type ThinkingConfig,
 } from "@google/genai";
 import { getEnvApiKey } from "../env-api-keys.js";
-import { calculateCost } from "../models.js";
+import { calculateCost, shouldEnableNativeWebSearch } from "../models.js";
 import type {
 	Api,
 	AssistantMessage,
@@ -26,6 +26,8 @@ import type { GoogleThinkingLevel } from "./google-gemini-cli.js";
 import {
 	convertMessages,
 	convertTools,
+	extractNativeWebSearchSignalsFromGroundingMetadata,
+	extractNativeWebSearchSignalsFromPart,
 	isThinkingPart,
 	mapStopReason,
 	mapToolChoice,
@@ -65,7 +67,8 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 				cacheRead: 0,
 				cacheWrite: 0,
 				totalTokens: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				webSearchCalls: 0,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, webSearch: 0, total: 0 },
 			},
 			stopReason: "stop",
 			timestamp: Date.now(),
@@ -82,10 +85,55 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 			let currentBlock: TextContent | ThinkingContent | null = null;
 			const blocks = output.content;
 			const blockIndex = () => blocks.length - 1;
+			const emittedSearchSignals = new Set<string>();
+
+			const closeCurrentBlock = () => {
+				if (!currentBlock) return;
+				if (currentBlock.type === "text") {
+					stream.push({
+						type: "text_end",
+						contentIndex: blockIndex(),
+						content: currentBlock.text,
+						partial: output,
+					});
+				} else {
+					stream.push({
+						type: "thinking_end",
+						contentIndex: blockIndex(),
+						content: currentBlock.thinking,
+						partial: output,
+					});
+				}
+				currentBlock = null;
+			};
+
+			const emitNativeWebSearchSignal = (signature: string, message: string, webSearchCallsIncrement: number) => {
+				if (!message || emittedSearchSignals.has(signature)) return;
+				emittedSearchSignals.add(signature);
+				closeCurrentBlock();
+
+				const searchBlock: ThinkingContent = {
+					type: "thinking",
+					thinking: "",
+				};
+				output.content.push(searchBlock);
+				stream.push({ type: "thinking_start", contentIndex: blockIndex(), partial: output });
+				searchBlock.thinking = message;
+				stream.push({ type: "thinking_delta", contentIndex: blockIndex(), delta: message, partial: output });
+				stream.push({ type: "thinking_end", contentIndex: blockIndex(), content: message, partial: output });
+
+				output.usage.webSearchCalls = (output.usage.webSearchCalls ?? 0) + webSearchCallsIncrement;
+				calculateCost(model, output.usage);
+			};
+
 			for await (const chunk of googleStream) {
 				const candidate = chunk.candidates?.[0];
 				if (candidate?.content?.parts) {
 					for (const part of candidate.content.parts) {
+						for (const signal of extractNativeWebSearchSignalsFromPart(part)) {
+							emitNativeWebSearchSignal(signal.signature, signal.message, signal.webSearchCallsIncrement);
+						}
+
 						if (part.text !== undefined) {
 							const isThinking = isThinkingPart(part);
 							if (
@@ -93,23 +141,7 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 								(isThinking && currentBlock.type !== "thinking") ||
 								(!isThinking && currentBlock.type !== "text")
 							) {
-								if (currentBlock) {
-									if (currentBlock.type === "text") {
-										stream.push({
-											type: "text_end",
-											contentIndex: blocks.length - 1,
-											content: currentBlock.text,
-											partial: output,
-										});
-									} else {
-										stream.push({
-											type: "thinking_end",
-											contentIndex: blockIndex(),
-											content: currentBlock.thinking,
-											partial: output,
-										});
-									}
-								}
+								closeCurrentBlock();
 								if (isThinking) {
 									currentBlock = { type: "thinking", thinking: "", thinkingSignature: undefined };
 									output.content.push(currentBlock);
@@ -148,24 +180,7 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 						}
 
 						if (part.functionCall) {
-							if (currentBlock) {
-								if (currentBlock.type === "text") {
-									stream.push({
-										type: "text_end",
-										contentIndex: blockIndex(),
-										content: currentBlock.text,
-										partial: output,
-									});
-								} else {
-									stream.push({
-										type: "thinking_end",
-										contentIndex: blockIndex(),
-										content: currentBlock.thinking,
-										partial: output,
-									});
-								}
-								currentBlock = null;
-							}
+							closeCurrentBlock();
 
 							// Generate unique ID if not provided or if it's a duplicate
 							const providedId = part.functionCall.id;
@@ -195,6 +210,9 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 						}
 					}
 				}
+				for (const signal of extractNativeWebSearchSignalsFromGroundingMetadata(candidate?.groundingMetadata)) {
+					emitNativeWebSearchSignal(signal.signature, signal.message, signal.webSearchCallsIncrement);
+				}
 
 				if (candidate?.finishReason) {
 					output.stopReason = mapStopReason(candidate.finishReason);
@@ -211,11 +229,13 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 						cacheRead: chunk.usageMetadata.cachedContentTokenCount || 0,
 						cacheWrite: 0,
 						totalTokens: chunk.usageMetadata.totalTokenCount || 0,
+						webSearchCalls: output.usage.webSearchCalls ?? 0,
 						cost: {
 							input: 0,
 							output: 0,
 							cacheRead: 0,
 							cacheWrite: 0,
+							webSearch: 0,
 							total: 0,
 						},
 					};
@@ -223,23 +243,7 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 				}
 			}
 
-			if (currentBlock) {
-				if (currentBlock.type === "text") {
-					stream.push({
-						type: "text_end",
-						contentIndex: blockIndex(),
-						content: currentBlock.text,
-						partial: output,
-					});
-				} else {
-					stream.push({
-						type: "thinking_end",
-						contentIndex: blockIndex(),
-						content: currentBlock.thinking,
-						partial: output,
-					});
-				}
-			}
+			closeCurrentBlock();
 
 			if (options?.signal?.aborted) {
 				throw new Error("Request was aborted");
@@ -331,6 +335,9 @@ function buildParams(
 	options: GoogleOptions = {},
 ): GenerateContentParameters {
 	const contents = convertMessages(model, context);
+	const nativeWebSearchEnabled = shouldEnableNativeWebSearch(model, options.enableNativeWebSearch);
+	const hasFunctionTools = (context.tools?.length ?? 0) > 0;
+	const tools = convertTools(context.tools ?? [], { enableNativeWebSearch: nativeWebSearchEnabled });
 
 	const generationConfig: GenerateContentConfig = {};
 	if (options.temperature !== undefined) {
@@ -343,10 +350,10 @@ function buildParams(
 	const config: GenerateContentConfig = {
 		...(Object.keys(generationConfig).length > 0 && generationConfig),
 		...(context.systemPrompt && { systemInstruction: sanitizeSurrogates(context.systemPrompt) }),
-		...(context.tools && context.tools.length > 0 && { tools: convertTools(context.tools) }),
+		...(tools && { tools }),
 	};
 
-	if (context.tools && context.tools.length > 0 && options.toolChoice) {
+	if (hasFunctionTools && options.toolChoice) {
 		config.toolConfig = {
 			functionCallingConfig: {
 				mode: mapToolChoice(options.toolChoice),
