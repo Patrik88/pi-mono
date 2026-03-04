@@ -17,6 +17,7 @@ Before doing any substantial work:
    - other branches -> default to `AGENTS.CORE_PR.md`
 4. Read `PI_MONO_WORKFLOW_CHEAT_SHEET.md` and follow it for branch flow (`sync/main`/`pg/daily`/`pg/core`).
 5. If `PI_MONO_WORKFLOW_CHEAT_SHEET.md` conflicts with any `AGENTS*.md` rule, follow `AGENTS*.md`.
+6. If the user provides a dedicated worktree path for a task, do all work in that worktree.
 
 Precedence:
 
