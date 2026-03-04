@@ -40,3 +40,4 @@ Recommended order for cross-package consistency:
 - `pg/daily` is the integration/runtime branch; prefer:
   - `git cherry-pick` from `pg/core/*`
   - `git merge --no-ff` from `pg/ext/*` and `pg/private/*`
+- Prefer separate worktrees for concurrent extension/private tasks.
