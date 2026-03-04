@@ -12,7 +12,7 @@ Produce a clean, reviewable upstream-ready diff.
 2. Keep scope tight to the user task.
 3. Prefer small, comprehensible commits.
 4. Explain edge cases and tradeoffs in technical terms.
-5. Branch base should be `sync/main` (not `pg/daily`).
+5. Branch base should be `main` (not `pg/daily`).
 6. Do not merge `pg/daily` into `pg/core/*`; cherry-pick only the required commits.
 
 ## Mandatory Checks Before "ready"
@@ -30,8 +30,7 @@ Do not include fork-local policy/workflow files unless explicitly requested:
 - `AGENTS.FORK.md`
 - `AGENTS.CORE_PR.md`
 - `AGENTS.EXTENSION.md`
-- `FORK_WORKFLOW.md`
-- `PI_MONO_WORKFLOW_CHEAT_SHEET.md`
+- `PI_MONO_WORKFLOW_PLAYBOOK.md`
 - local scratch notes
 
 ## Core-Minimalism Gate

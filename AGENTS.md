@@ -13,11 +13,18 @@ Before doing any substantial work:
 2. Read `AGENTS.FORK.md`.
 3. Then read exactly one profile file based on branch:
    - `pg/core/*` -> `AGENTS.CORE_PR.md`
-   - `pg/ext/*`, `pg/private/*`, `pg/daily`, `dev/*`, `codex/*` -> `AGENTS.EXTENSION.md`
+   - `pg/ext/*`, `pg/private/*`, `pg/daily`, `dev/*` -> `AGENTS.EXTENSION.md`
    - other branches -> default to `AGENTS.CORE_PR.md`
-4. Read `PI_MONO_WORKFLOW_CHEAT_SHEET.md` and follow it for branch flow (`sync/main`/`pg/daily`/`pg/core`).
-5. If `PI_MONO_WORKFLOW_CHEAT_SHEET.md` conflicts with any `AGENTS*.md` rule, follow `AGENTS*.md`.
+4. Read `PI_MONO_WORKFLOW_PLAYBOOK.md` and follow it for branch flow (`main`/`pg/daily`/`pg/core`).
+5. If `PI_MONO_WORKFLOW_PLAYBOOK.md` conflicts with any `AGENTS*.md` rule, follow `AGENTS*.md`.
 6. If the user provides a dedicated worktree path for a task, do all work in that worktree.
+
+Fork baseline:
+- Treat `pg/daily` as the fork runtime/source-of-truth branch.
+- Treat `main` as upstream parity mirror only.
+- Create branches from the base that matches task intent:
+  - `pg/core/*` from `main`
+  - `pg/ext/*`, `pg/private/*`, `dev/*` from `pg/daily` by default
 
 Precedence:
 
@@ -95,8 +102,8 @@ When closing issues via commit:
 ## PR Workflow
 - If the user approves: create a feature branch, pull PR, rebase on main, apply adjustments, commit, merge into main, push, close PR, and leave a comment in the user's tone
 - You never open PRs yourself. We work in feature branches until everything is according to the user's requirements, then merge into main, and push.
-- Keep `sync/main` as the read-only mirror of `upstream/main`.
-- For upstream candidates, branch from `sync/main` into `pg/core/<topic>`.
+- Keep `main` as the read-only mirror of `upstream/main`.
+- For upstream candidates, branch from `main` into `pg/core/<topic>`.
 - For daily runtime usage, integrate finished work into `pg/daily`:
   - `pg/core/*` changes via `cherry-pick`
   - `pg/ext/*` / `pg/private/*` via `merge --no-ff` when you want the full feature history
