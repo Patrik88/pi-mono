@@ -4,13 +4,18 @@ These rules are fork-specific and optimize day-to-day work in this fork.
 
 ## Branch Intents
 
-- `sync/main`: read-only mirror of `upstream/main`
+- `main`: read-only mirror of `upstream/main`
 - `pg/daily`: local integration branch (daily runtime/build branch)
 - `pg/core/*`: upstream-PR candidates
 - `pg/ext/*`: extension-track work
 - `pg/private/*`: private/fork-only features
 - `dev/*`: short-lived scratch branches
-- `codex/*`: temporary agent work branches (treat like `dev/*`)
+
+## Source of Truth
+
+- For fork runtime and local behavior, `pg/daily` is the source of truth.
+- `main` is the source of truth only for upstream parity.
+- `pg/core/*` is disposable PR-prep surface, not runtime source of truth.
 
 ## Upstream Safety
 
@@ -41,12 +46,16 @@ When type mismatches suggest stale `dist/*.d.ts`:
 
 ## Branching Guidance
 
-- New upstream-candidate work starts from `sync/main` into `pg/core/<topic>`.
-- Extension/private features start from `sync/main` into `pg/ext/<name>` or `pg/private/<topic>`.
+- Branch origin matrix (mandatory):
+  - `pg/core/<topic>`: create from `main`
+  - `pg/ext/<topic>`: create from `pg/daily` (default)
+  - `pg/private/<topic>`: create from `pg/daily` (default)
+  - `dev/<topic>`: create from `pg/daily` unless user asks to spike from another branch
+- Use `main` as base for `pg/ext/*`/`pg/private/*` only when user explicitly asks for clean-slate isolation.
 - Integrate finished work into `pg/daily` for daily usage:
   - `pg/core/*` -> prefer `git cherry-pick <commit>` (keep PR history clean)
   - `pg/ext/*` / `pg/private/*` -> prefer `git merge --no-ff <branch>` (keep feature history intact)
-- Never commit directly on `sync/main`.
+- Never commit directly on `main`.
 
 ## Worktree Guidance
 

@@ -1,10 +1,19 @@
 # Extension/Private Profile
 
-Use this profile on `pg/ext/*`, `pg/private/*`, `pg/daily`, `dev/*`, and `codex/*` branches.
+Use this profile on `pg/ext/*`, `pg/private/*`, `pg/daily`, and `dev/*` branches.
 
 ## Goal
 
 Optimize for fast iteration and local value while keeping code quality high.
+
+## Branch Origin Rules
+
+- `pg/daily` is the fork runtime/source-of-truth branch.
+- For extension/private-track work, create new branches from `pg/daily` by default:
+  - `pg/ext/<topic>` from `pg/daily`
+  - `pg/private/<topic>` from `pg/daily`
+  - `dev/<topic>` from `pg/daily` unless the user asks otherwise
+- Use `main` as a base for extension/private work only if the user explicitly asks for clean-slate isolation.
 
 ## Allowed Focus
 
