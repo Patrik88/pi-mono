@@ -39,6 +39,26 @@ When type mismatches suggest stale `dist/*.d.ts`:
 2. `cd packages/agent && npm run build`
 3. `cd packages/coding-agent && npm run clean && npm run build`
 
+When runtime behavior or an interactive-mode crash touches TUI code, also build:
+
+1. `cd packages/tui && npm run build`
+2. then rebuild `packages/coding-agent` so the linked `pi` runs against fresh package outputs
+
+## Upstream Update Routine
+
+When updating the fork to the latest upstream `main`:
+
+1. Sync `main` from `upstream/main`.
+2. Rebase `pg/daily` onto `main`.
+3. If upstream changed `package.json`/`package-lock.json`, or `npm ls` reports invalid/stale dependencies, run `npm install` before builds.
+4. Rebuild in the cross-package order above if the linked/runtime `pi` should reflect the update.
+5. If upstream changed `packages/tui` or the issue being debugged is in interactive rendering, rebuild `packages/tui` before `packages/coding-agent`.
+
+Important:
+- `packages/ai/src/models.generated.ts` may change during `packages/ai` build because the model catalog is fetched live.
+- `package-lock.json` may change during `npm install`.
+- Do not commit those files as part of a routine fork update unless the task explicitly includes dependency-lock refresh or model-catalog refresh.
+
 ## Working Tree Safety
 
 - If unexpected edits appear in files you did not touch in this session, pause and ask the user before editing/reverting those files.
