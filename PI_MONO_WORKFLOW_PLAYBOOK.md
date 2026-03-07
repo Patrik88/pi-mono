@@ -46,6 +46,16 @@ git checkout pg/daily
 git rebase main
 ```
 
+### C. Synka dependencies efter upstream-uppdatering
+
+Om `package.json`/`package-lock.json` ändrats uppströms, eller om `npm ls` visar `invalid`/stale dependencies:
+
+```bash
+npm install
+```
+
+Detta behövs ibland innan build, annars kan TypeScript läsa gamla dependency-typer trots att branchen är uppdaterad.
+
 ## 3) Integrera klart arbete till pg/daily
 
 - Från `pg/core/*`: `cherry-pick` (ren PR-historik).
@@ -61,20 +71,10 @@ git merge --no-ff pg/ext/<topic>
 
 ## 4) Build och lokal körning
 
-När typer/dist känns osynkade mellan paket:
-
 ```bash
 cd packages/ai && npm run build
 cd ../agent && npm run build
 cd ../coding-agent && npm run clean && npm run build
-```
-
-Länka lokal `pi`:
-
-```bash
-cd packages/coding-agent
-npm run clean
-npm run build
 npm link
 which pi
 pi --version
