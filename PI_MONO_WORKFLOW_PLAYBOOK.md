@@ -56,6 +56,36 @@ npm install
 
 Detta behövs ibland innan build, annars kan TypeScript läsa gamla dependency-typer trots att branchen är uppdaterad.
 
+### D. Standardord: "refresh"
+
+I denna fork betyder `refresh` följande:
+
+- `refresh main`
+  - synca `main` mot `upstream/main`
+- `refresh pg/daily`
+  - `refresh main`, sedan rebase:a `pg/daily` på `main`
+- `refresh pg/core/<topic>`
+  - `refresh main`, sedan rebase:a branchen på `main`
+- `refresh pg/ext/<topic>`, `pg/private/<topic>`, `dev/<topic>`
+  - `refresh main`, sedan rebase:a `pg/daily` på `main`, sedan rebase:a topic-branchen på `pg/daily`
+  - därefter gör du en compatibility pass innan refreshen räknas som klar
+
+Compatibility pass betyder:
+
+1. läs relevanta ändringar i nya basen (`upstream/main` och/eller `pg/daily`) för det område du jobbar i,
+2. kontrollera om det tillkommit nya hooks, extension-API:er, provider-seams, config-vägar, tester eller kontrakt som din fork/plugin bör använda,
+3. uppdatera branchen om den nya basen gör det rimligt att integrera eller förenkla implementationen,
+4. landa alltid i ett explicit svar:
+   - `no integration changes needed`, eller
+   - exakt vad som integrerades och varför.
+
+Exempel:
+
+```text
+Refresh pg/ext/openai-native-web-search, then rebuild for runtime testing.
+Refresh pg/ext/openai-native-web-search, run a compatibility pass, then rebuild for runtime testing.
+```
+
 ## 3) Integrera klart arbete till pg/daily
 
 - Från `pg/core/*`: `cherry-pick` (ren PR-historik).
