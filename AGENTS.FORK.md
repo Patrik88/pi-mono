@@ -59,6 +59,34 @@ Important:
 - `package-lock.json` may change during `npm install`.
 - Do not commit those files as part of a routine fork update unless the task explicitly includes dependency-lock refresh or model-catalog refresh.
 
+## Standard Git Term: Refresh
+
+Use `refresh` as the standard shorthand in this fork.
+
+- `refresh main`:
+  - sync `main` with `upstream/main`
+- `refresh pg/daily`:
+  - `refresh main`, then rebase `pg/daily` onto `main`
+- `refresh pg/core/<topic>`:
+  - `refresh main`, then rebase the branch onto `main`
+- `refresh pg/ext/<topic>`, `pg/private/<topic>`, or `dev/<topic>`:
+  - `refresh main`, then rebase `pg/daily` onto `main`, then rebase the branch onto `pg/daily`
+  - after the rebase, run a compatibility pass against relevant upstream/`pg/daily` changes before considering the refresh complete
+
+Compatibility pass means:
+
+1. inspect relevant changes in the new base for the area you are working in,
+2. check whether new hooks, extension APIs, provider capabilities, config paths, tests, or contracts should replace/simplify fork code,
+3. update the branch if those new seams should be adopted,
+4. explicitly report either:
+   - `no integration changes needed`, or
+   - what was integrated and why.
+
+Example:
+
+- `Refresh pg/ext/openai-native-web-search, then rebuild for runtime testing.`
+- `Refresh pg/ext/openai-native-web-search, run a compatibility pass, then rebuild for runtime testing.`
+
 ## Working Tree Safety
 
 - If unexpected edits appear in files you did not touch in this session, pause and ask the user before editing/reverting those files.
@@ -84,3 +112,17 @@ Important:
 - If the user gives an explicit worktree path, treat it as authoritative.
 - Keep branch/worktree mapping clear (for example `pg/ext/<topic>` -> `../pi-mono-pg-ext-<topic>`).
 - Do not remove/prune worktrees you did not create unless the user explicitly asks.
+- Remove temporary operation worktrees after the operation is complete (for example docs-only commits, isolated rebases, or clean cherry-picks).
+- Keep topic worktrees while the branch is still active, under review, or needed for runtime testing.
+- Before removing a worktree, confirm that no agent/process is still using it and that any needed commit/rebase/cherry-pick has been verified.
+
+## Handover Files
+
+- Treat agent handover files as temporary working files by default.
+- Do not commit handover files unless the user explicitly wants them preserved as real repository documentation.
+- Prefer `HANDOVER_<topic>.md` as the naming convention for temporary handovers.
+- A handover may be committed only if it is rewritten into durable documentation with ongoing value beyond the current task.
+- Files such as `HANDOVER_*.md`, `*_HANDOVER.md`, `PR-readiness-punch-list.md`, `notes.md`, and similar scratch planning docs should be treated as temporary by default.
+- Before finishing a task, either:
+  - remove the temporary handover file, or
+  - leave it uncommitted and clearly report that it is temporary.
