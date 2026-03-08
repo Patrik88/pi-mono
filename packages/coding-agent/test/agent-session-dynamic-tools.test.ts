@@ -74,4 +74,86 @@ describe("AgentSession dynamic tool registration", () => {
 
 		session.dispose();
 	});
+
+	it("runs session_start and session_switch hooks end-to-end", async () => {
+		const settingsManager = SettingsManager.create(tempDir, agentDir);
+		const sessionManager = SessionManager.create(tempDir, join(tempDir, "sessions"));
+		const hookEvents: string[] = [];
+
+		const resourceLoader = new DefaultResourceLoader({
+			cwd: tempDir,
+			agentDir,
+			settingsManager,
+			extensionFactories: [
+				(pi) => {
+					pi.on("session_start", () => {
+						hookEvents.push("session_start");
+						pi.registerTool({
+							name: "startup_hook_tool",
+							label: "Startup Hook Tool",
+							description: "Tool registered from session_start",
+							parameters: Type.Object({}),
+							execute: async () => ({
+								content: [{ type: "text", text: "startup" }],
+								details: {},
+							}),
+						});
+					});
+
+					pi.on("session_switch", (event) => {
+						hookEvents.push(`session_switch:${event.reason}`);
+						pi.registerTool({
+							name: `switch_${event.reason}_hook_tool`,
+							label: `Switch ${event.reason} Hook Tool`,
+							description: `Tool registered from session_switch (${event.reason})`,
+							parameters: Type.Object({}),
+							execute: async () => ({
+								content: [{ type: "text", text: event.reason }],
+								details: {},
+							}),
+						});
+					});
+				},
+			],
+		});
+		await resourceLoader.reload();
+
+		const { session } = await createAgentSession({
+			cwd: tempDir,
+			agentDir,
+			model: getModel("anthropic", "claude-sonnet-4-5")!,
+			settingsManager,
+			sessionManager,
+			resourceLoader,
+		});
+
+		expect(session.getAllTools().map((tool) => tool.name)).not.toContain("startup_hook_tool");
+		expect(session.getAllTools().map((tool) => tool.name)).not.toContain("switch_new_hook_tool");
+		expect(session.getAllTools().map((tool) => tool.name)).not.toContain("switch_resume_hook_tool");
+
+		await session.bindExtensions({});
+
+		expect(hookEvents).toEqual(["session_start"]);
+		expect(session.getAllTools().map((tool) => tool.name)).toContain("startup_hook_tool");
+		expect(session.getActiveToolNames()).toContain("startup_hook_tool");
+		expect(session.getAllTools().map((tool) => tool.name)).not.toContain("switch_new_hook_tool");
+
+		const initialSessionFile = session.sessionFile;
+		await session.newSession();
+
+		expect(hookEvents).toEqual(["session_start", "session_switch:new"]);
+		expect(session.getAllTools().map((tool) => tool.name)).toContain("switch_new_hook_tool");
+		expect(session.getActiveToolNames()).toContain("switch_new_hook_tool");
+		expect(session.sessionFile).not.toBe(initialSessionFile);
+
+		const resumeTarget = join(tempDir, "sessions", "resume-target.jsonl");
+		await session.switchSession(resumeTarget);
+
+		expect(hookEvents).toEqual(["session_start", "session_switch:new", "session_switch:resume"]);
+		expect(session.getAllTools().map((tool) => tool.name)).toContain("switch_resume_hook_tool");
+		expect(session.getActiveToolNames()).toContain("switch_resume_hook_tool");
+		expect(session.sessionFile).toBe(resumeTarget);
+
+		session.dispose();
+	});
 });
