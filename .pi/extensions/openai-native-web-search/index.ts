@@ -77,18 +77,27 @@ export function loadState(pi: ExtensionAPI, ctx: ExtensionContext, state: Native
 		return;
 	}
 
-	state.enabled = false;
+	state.enabled = true;
 	state.source = "default";
 }
 
-async function handleCommand(
+export async function handleCommand(
 	pi: ExtensionAPI,
 	args: string,
 	ctx: ExtensionCommandContext,
 	state: NativeWebSearchState,
 ): Promise<void> {
 	const command = args.trim().toLowerCase();
-	if (command === "" || command === "status") {
+	if (command === "status") {
+		ctx.ui.notify(describeCurrentState(ctx, state.enabled), "info");
+		return;
+	}
+
+	if (command === "" || command === "toggle") {
+		state.enabled = !state.enabled;
+		state.source = "session";
+		persistState(pi, state.enabled);
+		updateStatus(ctx, state.enabled);
 		ctx.ui.notify(describeCurrentState(ctx, state.enabled), "info");
 		return;
 	}
@@ -111,21 +120,12 @@ async function handleCommand(
 		return;
 	}
 
-	if (command === "toggle") {
-		state.enabled = !state.enabled;
-		state.source = "session";
-		persistState(pi, state.enabled);
-		updateStatus(ctx, state.enabled);
-		ctx.ui.notify(describeCurrentState(ctx, state.enabled), "info");
-		return;
-	}
-
 	ctx.ui.notify("Usage: /native-web-search [on|off|toggle|status]", "warning");
 }
 
 export default function openaiNativeWebSearchExtension(pi: ExtensionAPI) {
 	const state: NativeWebSearchState = {
-		enabled: false,
+		enabled: true,
 		source: "default",
 	};
 
