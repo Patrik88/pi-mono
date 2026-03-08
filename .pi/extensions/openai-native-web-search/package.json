@@ -1,0 +1,5 @@
+{
+  "name": "openai-native-web-search-extension",
+  "private": true,
+  "type": "module"
+}
