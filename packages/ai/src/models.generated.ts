@@ -3498,7 +3498,7 @@ export const MODELS = {
 			contextWindow: 1048576,
 			maxTokens: 65535,
 		} satisfies Model<"google-gemini-cli">,
-			"gpt-oss-120b-medium": {
+		"gpt-oss-120b-medium": {
 			id: "gpt-oss-120b-medium",
 			name: "GPT-OSS 120B Medium (Antigravity)",
 			api: "google-gemini-cli",
