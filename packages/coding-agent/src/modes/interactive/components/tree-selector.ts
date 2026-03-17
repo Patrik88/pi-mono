@@ -81,9 +81,10 @@ function formatDynamicTreeTime(timestamp: string): string {
 }
 
 function applyStrengthWithinBucket(text: string, progress: number): string {
-	// Strength resets at each color bucket boundary and fades within the bucket.
-	if (progress <= 0.18) return theme.bold(text);
-	if (progress <= 0.52) return text;
+	// Fade gently within a color bucket.
+	// Reset only when the color bucket changes, not at arbitrary sub-thresholds.
+	if (progress <= 0.1) return theme.bold(text);
+	if (progress <= 0.78) return text;
 	return `\x1b[2m${text}\x1b[22m`;
 }
 
@@ -92,20 +93,22 @@ function styleDynamicTimeBadge(label: string, timestamp: string): string {
 	const ageMinutes = ageMs / 60_000;
 	const base = `[${label}]`;
 
-	const buckets: Array<{ start: number; end: number; color: "warning" | "accent" | "text" | "muted" | "dim" }> = [
-		{ start: 0, end: 30, color: "warning" },
-		{ start: 30, end: 180, color: "warning" },
+	const colorBuckets: Array<{ start: number; end: number; color: "warning" | "accent" | "text" | "muted" | "dim" }> = [
+		{ start: 0, end: 180, color: "warning" },
 		{ start: 180, end: 1440, color: "accent" },
 		{ start: 1440, end: 10080, color: "text" },
 		{ start: 10080, end: 43200, color: "muted" },
 		{ start: 43200, end: Number.POSITIVE_INFINITY, color: "dim" },
 	];
 
-	const bucket = buckets.find((b) => ageMinutes <= b.end) ?? buckets[buckets.length - 1]!;
-	const bucketSpan = Number.isFinite(bucket.end) ? Math.max(1, bucket.end - bucket.start) : Math.max(1, bucket.start);
+	const bucket = colorBuckets.find((b) => ageMinutes <= b.end) ?? colorBuckets[colorBuckets.length - 1]!;
+	const bucketSpan = Number.isFinite(bucket.end) ? Math.max(1, bucket.end - bucket.start) : 43200;
 	const bucketAge = Math.max(0, ageMinutes - bucket.start);
-	const progress = Number.isFinite(bucket.end) ? Math.min(1, bucketAge / bucketSpan) : Math.min(1, bucketAge / 43200);
+	const progress = Math.min(1, bucketAge / bucketSpan);
 	const colored = theme.fg(bucket.color, base);
+
+	// The oldest bucket is already visually very weak due to color; keep it stable.
+	if (bucket.color === "dim") return colored;
 	return applyStrengthWithinBucket(colored, progress);
 }
 
