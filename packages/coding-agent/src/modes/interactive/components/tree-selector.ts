@@ -80,27 +80,33 @@ function formatDynamicTreeTime(timestamp: string): string {
 	return d.year.slice(-2) + "-" + d.month + "-" + d.day + " " + d.hour + ":" + d.minute;
 }
 
+function applyStrengthWithinBucket(text: string, progress: number): string {
+	// Strength resets at each color bucket boundary and fades within the bucket.
+	if (progress <= 0.18) return theme.bold(text);
+	if (progress <= 0.52) return text;
+	return `\x1b[2m${text}\x1b[22m`;
+}
+
 function styleDynamicTimeBadge(label: string, timestamp: string): string {
 	const ageMs = Math.max(0, Date.now() - new Date(timestamp).getTime());
 	const ageMinutes = ageMs / 60_000;
 	const base = `[${label}]`;
 
-	if (ageMinutes <= 30) {
-		return theme.fg("warning", theme.bold(base));
-	}
-	if (ageMinutes <= 180) {
-		return theme.fg("warning", base);
-	}
-	if (ageMinutes <= 1440) {
-		return theme.fg("accent", base);
-	}
-	if (ageMinutes <= 10080) {
-		return theme.fg("text", base);
-	}
-	if (ageMinutes <= 43200) {
-		return theme.fg("muted", base);
-	}
-	return theme.fg("dim", base);
+	const buckets: Array<{ start: number; end: number; color: "warning" | "accent" | "text" | "muted" | "dim" }> = [
+		{ start: 0, end: 30, color: "warning" },
+		{ start: 30, end: 180, color: "warning" },
+		{ start: 180, end: 1440, color: "accent" },
+		{ start: 1440, end: 10080, color: "text" },
+		{ start: 10080, end: 43200, color: "muted" },
+		{ start: 43200, end: Number.POSITIVE_INFINITY, color: "dim" },
+	];
+
+	const bucket = buckets.find((b) => ageMinutes <= b.end) ?? buckets[buckets.length - 1]!;
+	const bucketSpan = Number.isFinite(bucket.end) ? Math.max(1, bucket.end - bucket.start) : Math.max(1, bucket.start);
+	const bucketAge = Math.max(0, ageMinutes - bucket.start);
+	const progress = Number.isFinite(bucket.end) ? Math.min(1, bucketAge / bucketSpan) : Math.min(1, bucketAge / 43200);
+	const colored = theme.fg(bucket.color, base);
+	return applyStrengthWithinBucket(colored, progress);
 }
 
 class TreeList implements Component {
