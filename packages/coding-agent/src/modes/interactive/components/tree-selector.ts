@@ -80,37 +80,22 @@ function formatDynamicTreeTime(timestamp: string): string {
 	return d.year.slice(-2) + "-" + d.month + "-" + d.day + " " + d.hour + ":" + d.minute;
 }
 
-function applyStrengthWithinBucket(text: string, progress: number): string {
-	// We only have a few discrete text-strength states (bold / normal / dim),
-	// so keep the threshold windows narrow to avoid making minute-level differences
-	// look like hour-level differences.
-	if (progress <= 0.02) return theme.bold(text);
-	if (progress <= 0.9) return text;
-	return `\x1b[2m${text}\x1b[22m`;
-}
-
 function styleDynamicTimeBadge(label: string, timestamp: string): string {
 	const ageMs = Math.max(0, Date.now() - new Date(timestamp).getTime());
 	const ageMinutes = ageMs / 60_000;
 	const base = `[${label}]`;
 
-	const colorBuckets: Array<{ start: number; end: number; color: "warning" | "accent" | "text" | "muted" | "dim" }> = [
-		{ start: 0, end: 180, color: "warning" },
-		{ start: 180, end: 1440, color: "accent" },
-		{ start: 1440, end: 10080, color: "text" },
-		{ start: 10080, end: 43200, color: "muted" },
-		{ start: 43200, end: Number.POSITIVE_INFINITY, color: "dim" },
-	];
+	// Terminals do not support smooth opacity (like CSS). They only have a single "dim" toggle (\x1b[2m),
+	// which instantly drops brightness by 50%. This creates a harsh visual cliff when crossing a threshold.
+	// To fix the "huge jump", we remove the internal dimming cliff entirely and rely purely on
+	// graceful color transitions across narrower age buckets.
 
-	const bucket = colorBuckets.find((b) => ageMinutes <= b.end) ?? colorBuckets[colorBuckets.length - 1]!;
-	const bucketSpan = Number.isFinite(bucket.end) ? Math.max(1, bucket.end - bucket.start) : 43200;
-	const bucketAge = Math.max(0, ageMinutes - bucket.start);
-	const progress = Math.min(1, bucketAge / bucketSpan);
-	const colored = theme.fg(bucket.color, base);
-
-	// The oldest bucket is already visually very weak due to color; keep it stable.
-	if (bucket.color === "dim") return colored;
-	return applyStrengthWithinBucket(colored, progress);
+	if (ageMinutes <= 15) return theme.fg("warning", theme.bold(base));
+	if (ageMinutes <= 180) return theme.fg("warning", base);
+	if (ageMinutes <= 720) return theme.fg("accent", base);
+	if (ageMinutes <= 2880) return theme.fg("text", base);
+	if (ageMinutes <= 10080) return theme.fg("muted", base);
+	return theme.fg("dim", base);
 }
 
 class TreeList implements Component {
