@@ -91,8 +91,9 @@ function styleDynamicTimeBadge(label: string, timestamp: string): string {
 	// graceful color transitions across narrower age buckets.
 
 	if (ageMinutes <= 15) return theme.fg("warning", theme.bold(base));
-	if (ageMinutes <= 180) return theme.fg("warning", base);
-	if (ageMinutes <= 720) return theme.fg("accent", base);
+	if (ageMinutes <= 240) return theme.fg("warning", base);
+	if (ageMinutes <= 720) return `\x1b[2m${theme.fg("warning", base)}\x1b[22m`;
+	if (ageMinutes <= 1440) return theme.fg("accent", base);
 	if (ageMinutes <= 2880) return theme.fg("text", base);
 	if (ageMinutes <= 10080) return theme.fg("muted", base);
 	return theme.fg("dim", base);
