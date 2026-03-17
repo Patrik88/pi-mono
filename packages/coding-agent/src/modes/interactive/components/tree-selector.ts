@@ -81,10 +81,11 @@ function formatDynamicTreeTime(timestamp: string): string {
 }
 
 function applyStrengthWithinBucket(text: string, progress: number): string {
-	// Fade gently within a color bucket.
-	// Reset only when the color bucket changes, not at arbitrary sub-thresholds.
-	if (progress <= 0.1) return theme.bold(text);
-	if (progress <= 0.78) return text;
+	// We only have a few discrete text-strength states (bold / normal / dim),
+	// so keep the threshold windows narrow to avoid making minute-level differences
+	// look like hour-level differences.
+	if (progress <= 0.02) return theme.bold(text);
+	if (progress <= 0.9) return text;
 	return `\x1b[2m${text}\x1b[22m`;
 }
 
