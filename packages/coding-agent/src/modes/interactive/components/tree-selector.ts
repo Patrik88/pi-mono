@@ -9,6 +9,7 @@ import {
 	Text,
 	TruncatedText,
 	truncateToWidth,
+	visibleWidth,
 } from "@mariozechner/pi-tui";
 import type { SessionTreeNode } from "../../../core/session-manager.js";
 import { theme } from "../theme/theme.js";
@@ -46,6 +47,56 @@ export type FilterMode = "default" | "no-tools" | "user-only" | "labeled-only" |
 interface ToolCallInfo {
 	name: string;
 	arguments: Record<string, unknown>;
+}
+
+const TREE_TIME_TZ = process.env.PI_SENT_AT_TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const AUTO_TIME_LABEL_RE =
+	/^(\d{2}:\d{2}|\d{2} \d{2}:\d{2}|\d{2} [a-z]{3} \d{2}:\d{2}|\d{2}-\d{2}-\d{2} \d{2}:\d{2})$/i;
+
+function getLocalParts(date: Date, timeZone: string): Record<string, string> {
+	const parts = new Intl.DateTimeFormat("sv-SE", {
+		timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+	}).formatToParts(date);
+	return Object.fromEntries(parts.map((x) => [x.type, x.value]));
+}
+
+function formatDynamicTreeTime(timestamp: string): string {
+	const date = new Date(timestamp);
+	const now = new Date();
+	const d = getLocalParts(date, TREE_TIME_TZ);
+	const n = getLocalParts(now, TREE_TIME_TZ);
+	const months = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+	const monthName = months[Math.max(0, Math.min(11, Number(d.month) - 1))] || d.month;
+
+	if (d.year === n.year && d.month === n.month && d.day === n.day) return d.hour + ":" + d.minute;
+	if (d.year === n.year && d.month === n.month) return d.day + " " + d.hour + ":" + d.minute;
+	if (d.year === n.year) return d.day + " " + monthName + " " + d.hour + ":" + d.minute;
+	return d.year.slice(-2) + "-" + d.month + "-" + d.day + " " + d.hour + ":" + d.minute;
+}
+
+function styleDynamicTimeBadge(label: string, timestamp: string): string {
+	const ageMs = Math.max(0, Date.now() - new Date(timestamp).getTime());
+	const ageMinutes = ageMs / 60_000;
+	const base = `[${label}]`;
+
+	// Terminals do not support smooth opacity (like CSS). They only have a single "dim" toggle (\x1b[2m),
+	// which instantly drops brightness by 50%. This creates a harsh visual cliff when crossing a threshold.
+	// To fix the "huge jump", we remove the internal dimming cliff entirely and rely purely on
+	// graceful color transitions across narrower age buckets.
+
+	if (ageMinutes <= 15) return theme.fg("warning", theme.bold(base));
+	if (ageMinutes <= 240) return theme.fg("warning", base);
+	if (ageMinutes <= 720) return `\x1b[2m${theme.fg("warning", base)}\x1b[22m`;
+	if (ageMinutes <= 1440) return theme.fg("accent", base);
+	if (ageMinutes <= 2880) return theme.fg("text", base);
+	if (ageMinutes <= 10080) return theme.fg("muted", base);
+	return theme.fg("dim", base);
 }
 
 class TreeList implements Component {
@@ -614,7 +665,7 @@ class TreeList implements Component {
 			const entry = flatNode.node.entry;
 			const isSelected = i === this.selectedIndex;
 
-			// Build line: cursor + prefix + path marker + label + content
+			// Build line: cursor + prefix + path marker + content
 			const cursor = isSelected ? theme.fg("accent", "› ") : "  ";
 
 			// If multiple roots, shift display (roots at 0, not 1)
@@ -634,7 +685,6 @@ class TreeList implements Component {
 				const level = Math.floor(i / 3);
 				const posInLevel = i % 3;
 
-				// Check if there's a gutter at this level
 				const gutter = flatNode.gutters.find((g) => g.position === level);
 				if (gutter) {
 					if (posInLevel === 0) {
@@ -643,7 +693,6 @@ class TreeList implements Component {
 						prefixChars.push(" ");
 					}
 				} else if (connector && level === connectorPosition) {
-					// Connector at this level, with fold indicator
 					if (posInLevel === 0) {
 						prefixChars.push(flatNode.isLast ? "└" : "├");
 					} else if (posInLevel === 1) {
@@ -658,22 +707,56 @@ class TreeList implements Component {
 			}
 			const prefix = prefixChars.join("");
 
-			// Fold marker for nodes without connectors (roots)
 			const showsFoldInConnector = flatNode.showConnector && !flatNode.isVirtualRootChild;
 			const foldMarker = isFolded && !showsFoldInConnector ? theme.fg("accent", "⊞ ") : "";
-
-			// Active path marker - shown right before the entry text
 			const isOnActivePath = this.activePathIds.has(entry.id);
 			const pathMarker = isOnActivePath ? theme.fg("accent", "• ") : "";
 
-			const label = flatNode.node.label ? theme.fg("warning", `[${flatNode.node.label}] `) : "";
 			const content = this.getEntryDisplayText(flatNode.node, isSelected);
+			const leftPart = cursor + theme.fg("dim", prefix) + foldMarker + pathMarker + content;
+			const useRightAlignedLabels = process.env.PI_TREE_LABELS_RIGHT !== "0";
+			const entryNode = flatNode.node.entry;
+			const dynamicTime =
+				entryNode.type === "message" && entryNode.message.role === "user"
+					? formatDynamicTreeTime(entryNode.timestamp)
+					: undefined;
+			const persistedLabel = flatNode.node.label;
+			const manualLabel = persistedLabel && !AUTO_TIME_LABEL_RE.test(persistedLabel) ? persistedLabel : undefined;
 
-			let line = cursor + theme.fg("dim", prefix) + foldMarker + pathMarker + label + content;
-			if (isSelected) {
-				line = theme.bg("selectedBg", line);
+			const rightBadgeTextParts: string[] = [];
+			const rightBadgeStyledParts: string[] = [];
+			if (manualLabel) {
+				rightBadgeTextParts.push(`[${manualLabel}]`);
+				rightBadgeStyledParts.push(theme.fg("warning", `[${manualLabel}]`));
 			}
-			lines.push(truncateToWidth(line, width));
+			if (dynamicTime) {
+				rightBadgeTextParts.push(`[${dynamicTime}]`);
+				rightBadgeStyledParts.push(styleDynamicTimeBadge(dynamicTime, entryNode.timestamp));
+			}
+			const rightBadgeText = rightBadgeTextParts.join(" ");
+			const rightBadgeStyled = rightBadgeStyledParts.join(" ");
+
+			if (rightBadgeText && useRightAlignedLabels) {
+				const labelText = ` ${rightBadgeText}`;
+				const labelStyled = ` ${rightBadgeStyled}`;
+				const labelWidth = visibleWidth(labelText);
+				const leftMaxWidth = Math.max(1, width - labelWidth);
+				const truncatedLeft = truncateToWidth(leftPart, leftMaxWidth, "");
+				const padding = " ".repeat(Math.max(0, width - visibleWidth(truncatedLeft) - labelWidth));
+
+				let finalLine = truncatedLeft + padding + labelStyled;
+				if (isSelected) {
+					finalLine = theme.bg("selectedBg", finalLine);
+				}
+				lines.push(finalLine);
+			} else {
+				const inlineLabel = rightBadgeText ? `${rightBadgeStyled} ` : "";
+				let finalLine = cursor + theme.fg("dim", prefix) + foldMarker + pathMarker + inlineLabel + content;
+				if (isSelected) {
+					finalLine = theme.bg("selectedBg", finalLine);
+				}
+				lines.push(truncateToWidth(finalLine, width));
+			}
 		}
 
 		lines.push(
