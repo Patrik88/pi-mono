@@ -1789,6 +1789,7 @@ export class InteractiveMode {
 			modelRegistry: extensionRunner.getModelRegistry(),
 			model: this.session.model,
 			thinkingLevel: this.session.thinkingLevel,
+			getToolOutputPolicy: (request) => extensionRunner.createContext().getToolOutputPolicy(request),
 			isIdle: () => this.session.isIdle,
 			isProjectTrusted: () => this.settingsManager.isProjectTrusted(),
 			signal: this.session.agent.signal,

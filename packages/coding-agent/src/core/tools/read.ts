@@ -12,6 +12,12 @@ import { processImage } from "../../utils/image-process.ts";
 import { detectSupportedImageMimeTypeFromFile } from "../../utils/mime.ts";
 import { formatPathRelativeToCwdOrAbsolute } from "../../utils/paths.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
+import {
+	defaultToolOutputPolicy,
+	resolveToolOutputPolicy,
+	type ToolOutputPolicyProvider,
+	truncationOptionsFromPolicy,
+} from "./output-policy.ts";
 import { resolveReadPathAsync, resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, renderToolPath, replaceTabs, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
@@ -60,6 +66,8 @@ export interface ReadToolOptions {
 	autoResizeImages?: boolean;
 	/** Custom operations for file reading. Default: local filesystem */
 	operations?: ReadOperations;
+	/** Providers that can adjust text truncation for each read call. */
+	toolOutputPolicyProviders?: ToolOutputPolicyProvider[];
 }
 
 type ReadRenderArgs = { path?: string; file_path?: string; offset?: number; limit?: number };
@@ -206,6 +214,7 @@ export function createReadToolDefinition(
 ): ToolDefinition<typeof readSchema, ReadToolDetails | undefined> {
 	const autoResizeImages = options?.autoResizeImages ?? true;
 	const ops = options?.operations ?? defaultReadOperations;
+	const toolOutputPolicyProviders = options?.toolOutputPolicyProviders ?? [];
 	return {
 		name: "read",
 		label: "read",
@@ -214,12 +223,24 @@ export function createReadToolDefinition(
 		promptGuidelines: ["Use read to examine files instead of cat or sed."],
 		parameters: readSchema,
 		async execute(
-			_toolCallId,
+			toolCallId,
 			{ path, offset, limit }: { path: string; offset?: number; limit?: number },
 			signal?: AbortSignal,
 			_onUpdate?,
 			ctx?,
 		) {
+			const policy = resolveToolOutputPolicy(
+				toolOutputPolicyProviders,
+				{
+					toolName: "read",
+					toolCallId,
+					input: { path, offset, limit },
+					cwd,
+					purpose: "model-context",
+					model: ctx?.model,
+				},
+				defaultToolOutputPolicy("head"),
+			);
 			return new Promise<{ content: (TextContent | ImageContent)[]; details: ReadToolDetails | undefined }>(
 				(resolve, reject) => {
 					if (signal?.aborted) {
@@ -285,12 +306,12 @@ export function createReadToolDefinition(
 									selectedContent = allLines.slice(startLine).join("\n");
 								}
 								// Apply truncation, respecting both line and byte limits.
-								const truncation = truncateHead(selectedContent);
+								const truncation = truncateHead(selectedContent, truncationOptionsFromPolicy(policy));
 								let outputText: string;
 								if (truncation.firstLineExceedsLimit) {
 									// First line alone exceeds the byte limit. Point the model at a bash fallback.
 									const firstLineSize = formatSize(Buffer.byteLength(allLines[startLine], "utf-8"));
-									outputText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${DEFAULT_MAX_BYTES}]`;
+									outputText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(policy.maxBytes)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${policy.maxBytes}]`;
 									details = { truncation };
 								} else if (truncation.truncated) {
 									// Truncation occurred. Build an actionable continuation notice.
@@ -300,7 +321,7 @@ export function createReadToolDefinition(
 									if (truncation.truncatedBy === "lines") {
 										outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`;
 									} else {
-										outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`;
+										outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(policy.maxBytes)} limit). Use offset=${nextOffset} to continue.]`;
 									}
 									details = { truncation };
 								} else if (userLimitedLines !== undefined && startLine + userLimitedLines < allLines.length) {

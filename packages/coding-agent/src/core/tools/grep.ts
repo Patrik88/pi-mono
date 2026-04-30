@@ -9,6 +9,7 @@ import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts"
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
+import { defaultToolOutputPolicy, resolveToolOutputPolicy, type ToolOutputPolicyProvider } from "./output-policy.ts";
 import { resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, invalidArgText, shortenPath, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
@@ -63,6 +64,8 @@ const defaultGrepOperations: GrepOperations = {
 export interface GrepToolOptions {
 	/** Custom operations for grep. Default: local filesystem plus ripgrep */
 	operations?: GrepOperations;
+	/** Providers that can adjust output truncation for each grep call. */
+	toolOutputPolicyProviders?: ToolOutputPolicyProvider[];
 }
 
 function formatGrepCall(
@@ -125,6 +128,7 @@ export function createGrepToolDefinition(
 	options?: GrepToolOptions,
 ): ToolDefinition<typeof grepSchema, GrepToolDetails | undefined> {
 	const customOps = options?.operations;
+	const toolOutputPolicyProviders = options?.toolOutputPolicyProviders ?? [];
 	return {
 		name: "grep",
 		label: "grep",
@@ -132,7 +136,7 @@ export function createGrepToolDefinition(
 		promptSnippet: "Search file contents for patterns (respects .gitignore)",
 		parameters: grepSchema,
 		async execute(
-			_toolCallId,
+			toolCallId,
 			{
 				pattern,
 				path: searchDir,
@@ -152,8 +156,20 @@ export function createGrepToolDefinition(
 			},
 			signal?: AbortSignal,
 			_onUpdate?,
-			_ctx?,
+			ctx?,
 		) {
+			const policy = resolveToolOutputPolicy(
+				toolOutputPolicyProviders,
+				{
+					toolName: "grep",
+					toolCallId,
+					input: { pattern, path: searchDir, glob, ignoreCase, literal, context, limit },
+					cwd,
+					purpose: "model-context",
+					model: ctx?.model,
+				},
+				defaultToolOutputPolicy("head"),
+			);
 			return new Promise((resolve, reject) => {
 				if (signal?.aborted) {
 					reject(new Error("Operation aborted"));
@@ -332,7 +348,10 @@ export function createGrepToolDefinition(
 
 							const rawOutput = outputLines.join("\n");
 							// Apply byte truncation. There is no line limit here because the match limit already capped rows.
-							const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
+							const truncation = truncateHead(rawOutput, {
+								maxLines: Number.MAX_SAFE_INTEGER,
+								maxBytes: policy.maxBytes,
+							});
 							let output = truncation.content;
 							const details: GrepToolDetails = {};
 							// Build actionable notices for truncation and match limits.
@@ -344,7 +363,7 @@ export function createGrepToolDefinition(
 								details.matchLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+								notices.push(`${formatSize(policy.maxBytes)} limit reached`);
 								details.truncation = truncation;
 							}
 							if (linesTruncated) {

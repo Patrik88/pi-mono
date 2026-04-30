@@ -17,6 +17,7 @@ import {
 } from "../../utils/shell.ts";
 import type { ExtensionContext, ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
 import { OutputAccumulator } from "./output-accumulator.ts";
+import { defaultToolOutputPolicy, resolveToolOutputPolicy, type ToolOutputPolicyProvider } from "./output-policy.ts";
 import { getTextOutput, invalidArgText, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult } from "./truncate.ts";
@@ -194,6 +195,8 @@ export interface BashToolOptions {
 	exposeSessionEnvironment?: boolean;
 	/** Hook to adjust command, cwd, or env before execution */
 	spawnHook?: BashSpawnHook;
+	/** Providers that can adjust output truncation for each bash call. */
+	toolOutputPolicyProviders?: ToolOutputPolicyProvider[];
 }
 
 const BASH_PREVIEW_LINES = 5;
@@ -321,6 +324,7 @@ export function createBashToolDefinition(
 	const commandPrefix = options?.commandPrefix;
 	const exposeSessionEnvironment = options?.exposeSessionEnvironment ?? true;
 	const spawnHook = options?.spawnHook;
+	const toolOutputPolicyProviders = options?.toolOutputPolicyProviders ?? [];
 	return {
 		name: "bash",
 		label: "bash",
@@ -331,7 +335,7 @@ export function createBashToolDefinition(
 			: undefined,
 		parameters: bashSchema,
 		async execute(
-			_toolCallId,
+			toolCallId,
 			{ command, timeout }: { command: string; timeout?: number },
 			signal?: AbortSignal,
 			onUpdate?,
@@ -339,7 +343,24 @@ export function createBashToolDefinition(
 		) {
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
 			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook, exposeSessionEnvironment, ctx);
-			const output = new OutputAccumulator({ tempFilePrefix: "pi-bash" });
+			const policy = resolveToolOutputPolicy(
+				toolOutputPolicyProviders,
+				{
+					toolName: "bash",
+					toolCallId,
+					input: { command, timeout },
+					cwd,
+					purpose: "bash-execution",
+					model: ctx?.model,
+				},
+				defaultToolOutputPolicy("tail"),
+			);
+			const output = new OutputAccumulator({
+				tempFilePrefix: "pi-bash",
+				maxLines: policy.maxLines,
+				maxBytes: policy.maxBytes,
+				persistFullOutput: policy.saveFullOutput,
+			});
 			let acceptingOutput = true;
 			let updateTimer: NodeJS.Timeout | undefined;
 			let updateDirty = false;
@@ -409,13 +430,14 @@ export function createBashToolDefinition(
 					details = { truncation, fullOutputPath: snapshot.fullOutputPath };
 					const startLine = truncation.totalLines - truncation.outputLines + 1;
 					const endLine = truncation.totalLines;
+					const fullOutputNote = snapshot.fullOutputPath ?? "not saved";
 					if (truncation.lastLinePartial) {
 						const lastLineSize = formatSize(output.getLastLineBytes());
-						text += `\n\n[Showing last ${formatSize(truncation.outputBytes)} of line ${endLine} (line is ${lastLineSize}). Full output: ${snapshot.fullOutputPath}]`;
+						text += `\n\n[Showing last ${formatSize(truncation.outputBytes)} of line ${endLine} (line is ${lastLineSize}). Full output: ${fullOutputNote}]`;
 					} else if (truncation.truncatedBy === "lines") {
-						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}. Full output: ${snapshot.fullOutputPath}]`;
+						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}. Full output: ${fullOutputNote}]`;
 					} else {
-						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Full output: ${snapshot.fullOutputPath}]`;
+						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit). Full output: ${fullOutputNote}]`;
 					}
 				}
 				return { text, details };

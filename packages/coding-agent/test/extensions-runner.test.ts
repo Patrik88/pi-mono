@@ -90,6 +90,7 @@ describe("ExtensionRunner", () => {
 
 	const extensionContextActions: ExtensionContextActions = {
 		getModel: () => undefined,
+		getToolOutputPolicy: () => ({ maxBytes: 50 * 1024, maxLines: 2000, strategy: "head", saveFullOutput: true }),
 		isIdle: () => true,
 		isProjectTrusted: () => true,
 		getSignal: () => undefined,
