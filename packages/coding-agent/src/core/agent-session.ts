@@ -81,6 +81,7 @@ import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.js";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
 import { createAllToolDefinitions } from "./tools/index.js";
+import { resolveToolOutputPolicy } from "./tools/output-policy.js";
 import { createToolDefinitionFromAgentTool } from "./tools/tool-definition-wrapper.js";
 
 // ============================================================================
@@ -2190,6 +2191,14 @@ export class AgentSession {
 			},
 			{
 				getModel: () => this.model,
+				getToolOutputPolicy: (request) => {
+					const providers = runner.getToolOutputPolicyProviders();
+					return resolveToolOutputPolicy(providers, {
+						...request,
+						cwd: request.cwd ?? this._cwd,
+						model: request.model ?? this.model,
+					});
+				},
 				isIdle: () => !this.isStreaming,
 				getSignal: () => this.agent.signal,
 				abort: () => this.abort(),
@@ -2323,6 +2332,10 @@ export class AgentSession {
 		const autoResizeImages = this.settingsManager.getImageAutoResize();
 		const shellCommandPrefix = this.settingsManager.getShellCommandPrefix();
 		const shellPath = this.settingsManager.getShellPath();
+		const extensionsResult = this._resourceLoader.getExtensions();
+		const toolOutputPolicyProviders = [...extensionsResult.runtime.toolOutputPolicyProviders.values()].map(
+			(entry) => entry.provider,
+		);
 		const baseToolDefinitions = this._baseToolsOverride
 			? Object.fromEntries(
 					Object.entries(this._baseToolsOverride).map(([name, tool]) => [
@@ -2331,15 +2344,16 @@ export class AgentSession {
 					]),
 				)
 			: createAllToolDefinitions(this._cwd, {
-					read: { autoResizeImages },
-					bash: { commandPrefix: shellCommandPrefix, shellPath },
+					read: { autoResizeImages, toolOutputPolicyProviders },
+					bash: { commandPrefix: shellCommandPrefix, shellPath, toolOutputPolicyProviders },
+					grep: { toolOutputPolicyProviders },
+					find: { toolOutputPolicyProviders },
 				});
 
 		this._baseToolDefinitions = new Map(
 			Object.entries(baseToolDefinitions).map(([name, tool]) => [name, tool as ToolDefinition]),
 		);
 
-		const extensionsResult = this._resourceLoader.getExtensions();
 		if (options.flagValues) {
 			for (const [name, value] of options.flagValues) {
 				extensionsResult.runtime.flagValues.set(name, value);

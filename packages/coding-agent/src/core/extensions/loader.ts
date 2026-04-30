@@ -160,6 +160,7 @@ export function createExtensionRuntime(): ExtensionRuntime {
 		setThinkingLevel: notInitialized,
 		flagValues: new Map(),
 		pendingProviderRegistrations: [],
+		toolOutputPolicyProviders: new Map(),
 		assertActive,
 		invalidate: (message) => {
 			state.staleMessage ??=
@@ -215,6 +216,11 @@ function createExtensionAPI(
 				sourceInfo: extension.sourceInfo,
 				...options,
 			});
+		},
+
+		registerToolOutputPolicyProvider(name, provider): void {
+			runtime.assertActive();
+			runtime.toolOutputPolicyProviders.set(name, { provider, extensionPath: extension.path });
 		},
 
 		registerShortcut(

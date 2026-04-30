@@ -226,6 +226,9 @@ export class ExtensionRunner {
 	private modelRegistry: ModelRegistry;
 	private errorListeners: Set<ExtensionErrorListener> = new Set();
 	private getModel: () => Model<any> | undefined = () => undefined;
+	private getToolOutputPolicyFn: ExtensionContextActions["getToolOutputPolicy"] = () => {
+		throw new Error("Extension runtime not initialized");
+	};
 	private isIdleFn: () => boolean = () => true;
 	private getSignalFn: () => AbortSignal | undefined = () => undefined;
 	private waitForIdleFn: () => Promise<void> = async () => {};
@@ -285,6 +288,7 @@ export class ExtensionRunner {
 
 		// Context actions (required)
 		this.getModel = contextActions.getModel;
+		this.getToolOutputPolicyFn = contextActions.getToolOutputPolicy;
 		this.isIdleFn = contextActions.isIdle;
 		this.getSignalFn = contextActions.getSignal;
 		this.abortFn = contextActions.abort;
@@ -474,6 +478,10 @@ export class ExtensionRunner {
 		}
 	}
 
+	getToolOutputPolicyProviders() {
+		return [...this.runtime.toolOutputPolicyProviders.values()].map((entry) => entry.provider);
+	}
+
 	onError(listener: ExtensionErrorListener): () => void {
 		this.errorListeners.add(listener);
 		return () => this.errorListeners.delete(listener);
@@ -593,6 +601,10 @@ export class ExtensionRunner {
 			get model() {
 				runner.assertActive();
 				return getModel();
+			},
+			getToolOutputPolicy: (request) => {
+				runner.assertActive();
+				return runner.getToolOutputPolicyFn(request);
 			},
 			isIdle: () => {
 				runner.assertActive();

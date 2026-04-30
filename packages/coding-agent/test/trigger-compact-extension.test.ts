@@ -10,6 +10,7 @@ function createContext(tokens: number | null, compact = vi.fn()): ExtensionConte
 		sessionManager: {} as ExtensionContext["sessionManager"],
 		modelRegistry: {} as ExtensionContext["modelRegistry"],
 		model: undefined,
+		getToolOutputPolicy: () => ({ maxBytes: 50 * 1024, maxLines: 2000, strategy: "head", saveFullOutput: true }),
 		isIdle: () => true,
 		signal: undefined,
 		abort: vi.fn(),

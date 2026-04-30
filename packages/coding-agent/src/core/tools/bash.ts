@@ -18,6 +18,12 @@ import {
 	untrackDetachedChildPid,
 } from "../../utils/shell.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
+import {
+	defaultToolOutputPolicy,
+	resolveToolOutputPolicy,
+	type ToolOutputPolicyProvider,
+	truncationOptionsFromPolicy,
+} from "./output-policy.js";
 import { getTextOutput, invalidArgText, str } from "./render-utils.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult, truncateTail } from "./truncate.js";
@@ -158,6 +164,8 @@ export interface BashToolOptions {
 	shellPath?: string;
 	/** Hook to adjust command, cwd, or env before execution */
 	spawnHook?: BashSpawnHook;
+	/** Providers that can adjust output truncation for each bash call. */
+	toolOutputPolicyProviders?: ToolOutputPolicyProvider[];
 }
 
 const BASH_PREVIEW_LINES = 5;
@@ -277,6 +285,7 @@ export function createBashToolDefinition(
 	const ops = options?.operations ?? createLocalBashOperations({ shellPath: options?.shellPath });
 	const commandPrefix = options?.commandPrefix;
 	const spawnHook = options?.spawnHook;
+	const toolOutputPolicyProviders = options?.toolOutputPolicyProviders ?? [];
 	return {
 		name: "bash",
 		label: "bash",
@@ -284,14 +293,26 @@ export function createBashToolDefinition(
 		promptSnippet: "Execute bash commands (ls, grep, find, etc.)",
 		parameters: bashSchema,
 		async execute(
-			_toolCallId,
+			toolCallId,
 			{ command, timeout }: { command: string; timeout?: number },
 			signal?: AbortSignal,
 			onUpdate?,
-			_ctx?,
+			ctx?,
 		) {
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
 			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook);
+			const policy = resolveToolOutputPolicy(
+				toolOutputPolicyProviders,
+				{
+					toolName: "bash",
+					toolCallId,
+					input: { command, timeout },
+					cwd,
+					purpose: "bash-execution",
+					model: ctx?.model,
+				},
+				defaultToolOutputPolicy("tail"),
+			);
 			if (onUpdate) {
 				onUpdate({ content: [], details: undefined });
 			}
@@ -301,7 +322,7 @@ export function createBashToolDefinition(
 				let totalBytes = 0;
 				const chunks: Buffer[] = [];
 				let chunksBytes = 0;
-				const maxChunksBytes = DEFAULT_MAX_BYTES * 2;
+				const maxChunksBytes = policy.maxBytes * 2;
 
 				const ensureTempFile = () => {
 					if (tempFilePath) return;
@@ -313,7 +334,7 @@ export function createBashToolDefinition(
 				const handleData = (data: Buffer) => {
 					totalBytes += data.length;
 					// Start writing to a temp file once output exceeds the in-memory threshold.
-					if (totalBytes > DEFAULT_MAX_BYTES) {
+					if (policy.saveFullOutput && totalBytes > policy.maxBytes) {
 						ensureTempFile();
 					}
 					// Write to temp file if we have one.
@@ -330,8 +351,8 @@ export function createBashToolDefinition(
 					if (onUpdate) {
 						const fullBuffer = Buffer.concat(chunks);
 						const fullText = fullBuffer.toString("utf-8");
-						const truncation = truncateTail(fullText);
-						if (truncation.truncated) {
+						const truncation = truncateTail(fullText, truncationOptionsFromPolicy(policy));
+						if (policy.saveFullOutput && truncation.truncated) {
 							ensureTempFile();
 						}
 						onUpdate({
@@ -355,8 +376,8 @@ export function createBashToolDefinition(
 						const fullBuffer = Buffer.concat(chunks);
 						const fullOutput = fullBuffer.toString("utf-8");
 						// Apply tail truncation for the final display payload.
-						const truncation = truncateTail(fullOutput);
-						if (truncation.truncated) {
+						const truncation = truncateTail(fullOutput, truncationOptionsFromPolicy(policy));
+						if (policy.saveFullOutput && truncation.truncated) {
 							ensureTempFile();
 						}
 						// Close temp file stream before building the final result.
@@ -375,7 +396,7 @@ export function createBashToolDefinition(
 							} else if (truncation.truncatedBy === "lines") {
 								outputText += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}. Full output: ${tempFilePath}]`;
 							} else {
-								outputText += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Full output: ${tempFilePath}]`;
+								outputText += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(policy.maxBytes)} limit). Full output: ${tempFilePath ?? "not saved"}]`;
 							}
 						}
 						if (exitCode !== 0 && exitCode !== null) {

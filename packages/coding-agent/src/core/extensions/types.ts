@@ -75,6 +75,7 @@ import type {
 	ReadToolInput,
 	WriteToolInput,
 } from "../tools/index.js";
+import type { ToolOutputPolicy, ToolOutputPolicyProvider, ToolOutputPolicyRequest } from "../tools/output-policy.js";
 
 export type { ExecOptions, ExecResult } from "../exec.js";
 export type { BuildSystemPromptOptions } from "../system-prompt.js";
@@ -306,6 +307,10 @@ export interface ExtensionContext {
 	modelRegistry: ModelRegistry;
 	/** Current model (may be undefined) */
 	model: Model<any> | undefined;
+	/** Resolve the active output policy for a specific tool call. */
+	getToolOutputPolicy(
+		request: Omit<ToolOutputPolicyRequest, "cwd" | "model"> & Partial<Pick<ToolOutputPolicyRequest, "cwd" | "model">>,
+	): ToolOutputPolicy;
 	/** Whether the agent is idle (not streaming) */
 	isIdle(): boolean;
 	/** The current abort signal, or undefined when the agent is not streaming. */
@@ -1118,6 +1123,9 @@ export interface ExtensionAPI {
 		tool: ToolDefinition<TParams, TDetails, TState>,
 	): void;
 
+	/** Register a provider that can adjust output limits per tool call. */
+	registerToolOutputPolicyProvider(name: string, provider: ToolOutputPolicyProvider): void;
+
 	// =========================================================================
 	// Command, Shortcut, Flag Registration
 	// =========================================================================
@@ -1429,6 +1437,8 @@ export interface ExtensionRuntimeState {
 	flagValues: Map<string, boolean | string>;
 	/** Provider registrations queued during extension loading, processed when runner binds */
 	pendingProviderRegistrations: Array<{ name: string; config: ProviderConfig; extensionPath: string }>;
+	/** Tool output policy providers registered by extensions. */
+	toolOutputPolicyProviders: Map<string, { provider: ToolOutputPolicyProvider; extensionPath: string }>;
 	/** Throws when this extension instance is stale after runtime replacement. */
 	assertActive: () => void;
 	/** Marks this extension instance as stale after runtime replacement or reload. */
@@ -1470,6 +1480,9 @@ export interface ExtensionActions {
  */
 export interface ExtensionContextActions {
 	getModel: () => Model<any> | undefined;
+	getToolOutputPolicy: (
+		request: Omit<ToolOutputPolicyRequest, "cwd" | "model"> & Partial<Pick<ToolOutputPolicyRequest, "cwd" | "model">>,
+	) => ToolOutputPolicy;
 	isIdle: () => boolean;
 	getSignal: () => AbortSignal | undefined;
 	abort: () => void;
