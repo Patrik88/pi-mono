@@ -249,19 +249,103 @@ const JSON_SCHEMA_META_DECLARATIONS = new Set([
 	"definitions", // pre-draft-2019-09 equivalent of $defs
 ]);
 
+function isSchemaRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getJsonTypeForConst(value: unknown): string | undefined {
+	if (value === null) return "null";
+	if (Array.isArray(value)) return "array";
+	const type = typeof value;
+	return type === "string" || type === "number" || type === "boolean" ? type : undefined;
+}
+
+function constLiteralUnionToEnum(value: unknown): { type?: string; enum: unknown[] } | undefined {
+	if (!Array.isArray(value) || value.length === 0) {
+		return undefined;
+	}
+
+	const enumValues: unknown[] = [];
+	let commonType: string | undefined;
+	for (const candidate of value) {
+		if (!isSchemaRecord(candidate) || !("const" in candidate)) {
+			return undefined;
+		}
+
+		const constValue = candidate.const;
+		const candidateType = typeof candidate.type === "string" ? candidate.type : getJsonTypeForConst(constValue);
+		if (candidateType === undefined || (commonType !== undefined && commonType !== candidateType)) {
+			return undefined;
+		}
+		commonType = candidateType;
+		enumValues.push(constValue);
+	}
+
+	return { type: commonType, enum: enumValues };
+}
+
+function lowerJsonSchemaTypeArray(types: string[]): Record<string, unknown> | undefined {
+	const nonNullTypes = [...new Set(types)].filter((type) => type !== "null");
+
+	if (nonNullTypes.length === 1) {
+		return { type: nonNullTypes[0] };
+	}
+
+	return undefined;
+}
+
 /**
- * Strip meta-declarations from a schema obj
+ * Lower JSON Schema into the OpenAPI-like subset accepted by Cloud Code Assist's
+ * legacy `parameters` field. This path is used for Claude models because Cloud
+ * Code Assist translates `parameters` into Anthropic tool input schemas.
  */
 function sanitizeForOpenApi(schema: unknown): unknown {
-	if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
+	if (Array.isArray(schema)) {
+		return schema.map((item) => sanitizeForOpenApi(item));
+	}
+	if (!isSchemaRecord(schema)) {
 		return schema;
 	}
 
 	const result: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(schema)) {
 		if (JSON_SCHEMA_META_DECLARATIONS.has(key)) continue;
+		if (key === "const") continue;
+		if (key === "type" && Array.isArray(value)) continue;
+		if (key === "anyOf" || key === "oneOf") continue;
 		result[key] = sanitizeForOpenApi(value);
 	}
+
+	const constValue = schema.const;
+	if (constValue !== undefined) {
+		result.enum = [constValue];
+		if (result.type === undefined) {
+			const constType = getJsonTypeForConst(constValue);
+			if (constType !== undefined) {
+				result.type = constType;
+			}
+		}
+	}
+
+	const anyOfEnum = constLiteralUnionToEnum(schema.anyOf);
+	const oneOfEnum = anyOfEnum === undefined ? constLiteralUnionToEnum(schema.oneOf) : undefined;
+	const literalEnum = anyOfEnum ?? oneOfEnum;
+	if (literalEnum !== undefined) {
+		result.enum = literalEnum.enum;
+		if (literalEnum.type !== undefined) {
+			result.type = literalEnum.type;
+		}
+	}
+
+	if (Array.isArray(schema.type)) {
+		const loweredType = lowerJsonSchemaTypeArray(
+			schema.type.filter((type): type is string => typeof type === "string"),
+		);
+		if (loweredType !== undefined) {
+			Object.assign(result, loweredType);
+		}
+	}
+
 	return result;
 }
 

@@ -107,12 +107,103 @@ describe("google-shared convertTools", () => {
 		});
 	});
 
+	it("converts const literal unions to enums when useParameters=true", () => {
+		const tools = [
+			makeTool({
+				type: "object",
+				properties: {
+					type: {
+						anyOf: [
+							{ type: "string", const: "file" },
+							{ type: "string", const: "snippet" },
+							{ type: "string", const: "context" },
+						],
+					},
+					action: {
+						oneOf: [
+							{ type: "string", const: "send" },
+							{ type: "string", const: "ask" },
+						],
+					},
+				},
+			}),
+		];
+
+		const result = convertTools(tools, true);
+		const decl = result?.[0]?.functionDeclarations?.[0];
+
+		expect(decl?.parameters).toEqual({
+			type: "object",
+			properties: {
+				type: {
+					type: "string",
+					enum: ["file", "snippet", "context"],
+				},
+				action: {
+					type: "string",
+					enum: ["send", "ask"],
+				},
+			},
+		});
+	});
+
+	it("converts single const values to single-value enums when useParameters=true", () => {
+		const tools = [
+			makeTool({
+				type: "object",
+				properties: {
+					action: { type: "string", const: "list" },
+				},
+			}),
+		];
+
+		const result = convertTools(tools, true);
+		const decl = result?.[0]?.functionDeclarations?.[0];
+
+		expect(decl?.parameters).toEqual({
+			type: "object",
+			properties: {
+				action: { type: "string", enum: ["list"] },
+			},
+		});
+	});
+
+	it("lowers JSON Schema type arrays without emitting composition keywords when useParameters=true", () => {
+		const tools = [
+			makeTool({
+				type: "object",
+				properties: {
+					optionalString: { type: ["string", "null"] },
+					stringOrBoolean: { type: ["string", "boolean"] },
+					withAnyOf: {
+						type: ["array", "boolean"],
+						anyOf: [{ type: "array", items: { type: "string" } }, { type: "boolean" }],
+						description: "Array or boolean",
+					},
+				},
+			}),
+		];
+
+		const result = convertTools(tools, true);
+		const decl = result?.[0]?.functionDeclarations?.[0];
+
+		expect(decl?.parameters).toEqual({
+			type: "object",
+			properties: {
+				optionalString: { type: "string" },
+				stringOrBoolean: {},
+				withAnyOf: { description: "Array or boolean" },
+			},
+		});
+	});
+
 	it("does not mutate the original Tool.parameters object", () => {
 		const originalParameters = {
 			$schema: "http://json-schema.org/draft-07/schema#",
 			type: "object",
 			properties: {
-				command: { type: "string" },
+				command: { type: "string", const: "run" },
+				mode: { type: ["string", "null"] },
 			},
 			required: ["command"],
 		};
@@ -124,19 +215,21 @@ describe("google-shared convertTools", () => {
 			$schema: "http://json-schema.org/draft-07/schema#",
 			type: "object",
 			properties: {
-				command: { type: "string" },
+				command: { type: "string", const: "run" },
+				mode: { type: ["string", "null"] },
 			},
 			required: ["command"],
 		});
 	});
 
-	it("preserves $schema in parametersJsonSchema when useParameters=false", () => {
+	it("preserves full JSON Schema in parametersJsonSchema when useParameters=false", () => {
 		const tools = [
 			makeTool({
 				$schema: "http://json-schema.org/draft-07/schema#",
 				type: "object",
 				properties: {
-					command: { type: "string" },
+					command: { type: "string", const: "run" },
+					mode: { type: ["string", "null"] },
 				},
 				required: ["command"],
 			}),
@@ -150,7 +243,8 @@ describe("google-shared convertTools", () => {
 			$schema: "http://json-schema.org/draft-07/schema#",
 			type: "object",
 			properties: {
-				command: { type: "string" },
+				command: { type: "string", const: "run" },
+				mode: { type: ["string", "null"] },
 			},
 			required: ["command"],
 		});
