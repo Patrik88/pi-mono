@@ -79,6 +79,7 @@ import type {
 	ReadToolInput,
 	WriteToolInput,
 } from "../tools/index.ts";
+import type { ToolOutputPolicy, ToolOutputPolicyProvider, ToolOutputPolicyRequest } from "../tools/output-policy.ts";
 
 export type { ExecOptions, ExecResult } from "../exec.ts";
 export type { BuildSystemPromptOptions } from "../system-prompt.ts";
@@ -316,6 +317,10 @@ export interface ExtensionContext {
 	modelRegistry: ModelRegistry;
 	/** Current model (may be undefined) */
 	model: Model<any> | undefined;
+	/** Resolve the active output policy for a specific tool call. */
+	getToolOutputPolicy(
+		request: Omit<ToolOutputPolicyRequest, "cwd" | "model"> & Partial<Pick<ToolOutputPolicyRequest, "cwd" | "model">>,
+	): ToolOutputPolicy;
 	/** Whether the agent is idle (not streaming) */
 	isIdle(): boolean;
 	/** Whether project-local trust is active for this context. */
@@ -1221,6 +1226,9 @@ export interface ExtensionAPI {
 		tool: ToolDefinition<TParams, TDetails, TState>,
 	): void;
 
+	/** Register a provider that can adjust output limits per tool call. */
+	registerToolOutputPolicyProvider(name: string, provider: ToolOutputPolicyProvider): void;
+
 	// =========================================================================
 	// Command, Shortcut, Flag Registration
 	// =========================================================================
@@ -1561,6 +1569,8 @@ export interface ExtensionRuntimeState {
 	pendingProviderRegistrations: Array<{ name: string; config: ProviderConfig; extensionPath: string }>;
 	/** Native pi-ai provider registrations queued during extension loading, processed when runner binds. */
 	pendingNativeProviderRegistrations: Array<{ provider: Provider; extensionPath: string }>;
+	/** Tool output policy providers registered by extensions. */
+	toolOutputPolicyProviders: Map<string, { provider: ToolOutputPolicyProvider; extensionPath: string }>;
 	/** Throws when this extension instance is stale after runtime replacement. */
 	assertActive: () => void;
 	/** Marks this extension instance as stale after runtime replacement or reload. */
@@ -1603,6 +1613,9 @@ export interface ExtensionActions {
  */
 export interface ExtensionContextActions {
 	getModel: () => Model<any> | undefined;
+	getToolOutputPolicy: (
+		request: Omit<ToolOutputPolicyRequest, "cwd" | "model"> & Partial<Pick<ToolOutputPolicyRequest, "cwd" | "model">>,
+	) => ToolOutputPolicy;
 	isIdle: () => boolean;
 	isProjectTrusted: () => boolean;
 	getSignal: () => AbortSignal | undefined;

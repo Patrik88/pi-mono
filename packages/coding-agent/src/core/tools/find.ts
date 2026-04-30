@@ -8,6 +8,7 @@ import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts"
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
+import { defaultToolOutputPolicy, resolveToolOutputPolicy, type ToolOutputPolicyProvider } from "./output-policy.ts";
 import { pathExists, resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, invalidArgText, shortenPath, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
@@ -54,6 +55,8 @@ const defaultFindOperations: FindOperations = {
 export interface FindToolOptions {
 	/** Custom operations for find. Default: local filesystem plus fd */
 	operations?: FindOperations;
+	/** Providers that can adjust output truncation for each find call. */
+	toolOutputPolicyProviders?: ToolOutputPolicyProvider[];
 }
 
 function formatFindCall(args: { pattern: string; path?: string; limit?: number } | undefined, theme: Theme): string {
@@ -111,6 +114,7 @@ export function createFindToolDefinition(
 	options?: FindToolOptions,
 ): ToolDefinition<typeof findSchema, FindToolDetails | undefined> {
 	const customOps = options?.operations;
+	const toolOutputPolicyProviders = options?.toolOutputPolicyProviders ?? [];
 	return {
 		name: "find",
 		label: "find",
@@ -118,12 +122,24 @@ export function createFindToolDefinition(
 		promptSnippet: "Find files by glob pattern (respects .gitignore)",
 		parameters: findSchema,
 		async execute(
-			_toolCallId,
+			toolCallId,
 			{ pattern, path: searchDir, limit }: { pattern: string; path?: string; limit?: number },
 			signal?: AbortSignal,
 			_onUpdate?,
-			_ctx?,
+			ctx?,
 		) {
+			const policy = resolveToolOutputPolicy(
+				toolOutputPolicyProviders,
+				{
+					toolName: "find",
+					toolCallId,
+					input: { pattern, path: searchDir, limit },
+					cwd,
+					purpose: "model-context",
+					model: ctx?.model,
+				},
+				defaultToolOutputPolicy("head"),
+			);
 			return new Promise((resolve, reject) => {
 				if (signal?.aborted) {
 					reject(new Error("Operation aborted"));
@@ -186,7 +202,10 @@ export function createFindToolDefinition(
 							});
 							const resultLimitReached = relativized.length >= effectiveLimit;
 							const rawOutput = relativized.join("\n");
-							const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
+							const truncation = truncateHead(rawOutput, {
+								maxLines: Number.MAX_SAFE_INTEGER,
+								maxBytes: policy.maxBytes,
+							});
 							let resultOutput = truncation.content;
 							const details: FindToolDetails = {};
 							const notices: string[] = [];
@@ -195,7 +214,7 @@ export function createFindToolDefinition(
 								details.resultLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+								notices.push(`${formatSize(policy.maxBytes)} limit reached`);
 								details.truncation = truncation;
 							}
 							if (notices.length > 0) {
@@ -321,7 +340,10 @@ export function createFindToolDefinition(
 
 							const resultLimitReached = relativized.length >= effectiveLimit;
 							const rawOutput = relativized.join("\n");
-							const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
+							const truncation = truncateHead(rawOutput, {
+								maxLines: Number.MAX_SAFE_INTEGER,
+								maxBytes: policy.maxBytes,
+							});
 							let resultOutput = truncation.content;
 							const details: FindToolDetails = {};
 							const notices: string[] = [];
@@ -332,7 +354,7 @@ export function createFindToolDefinition(
 								details.resultLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+								notices.push(`${formatSize(policy.maxBytes)} limit reached`);
 								details.truncation = truncation;
 							}
 							if (notices.length > 0) {

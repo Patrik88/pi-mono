@@ -8,6 +8,8 @@ export interface OutputAccumulatorOptions {
 	maxLines?: number;
 	maxBytes?: number;
 	tempFilePrefix?: string;
+	/** When false, never write the full output to a temp file. Default: true. */
+	persistFullOutput?: boolean;
 }
 
 export interface OutputSnapshot {
@@ -37,6 +39,7 @@ export class OutputAccumulator {
 	private readonly maxBytes: number;
 	private readonly maxRollingBytes: number;
 	private readonly tempFilePrefix: string;
+	private readonly persistFullOutput: boolean;
 	private readonly decoder = new TextDecoder();
 
 	private rawChunks: Buffer[] = [];
@@ -59,6 +62,7 @@ export class OutputAccumulator {
 		this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
 		this.maxRollingBytes = Math.max(this.maxBytes * 2, 1);
 		this.tempFilePrefix = options.tempFilePrefix ?? "pi-output";
+		this.persistFullOutput = options.persistFullOutput !== false;
 	}
 
 	append(data: Buffer): void {
@@ -69,6 +73,9 @@ export class OutputAccumulator {
 		this.totalRawBytes += data.length;
 		this.appendDecodedText(this.decoder.decode(data, { stream: true }));
 
+		if (!this.persistFullOutput) {
+			return;
+		}
 		if (this.tempFileStream || this.shouldUseTempFile()) {
 			this.ensureTempFile();
 			this.tempFileStream?.write(data);
@@ -209,7 +216,7 @@ export class OutputAccumulator {
 	}
 
 	private ensureTempFile(): void {
-		if (this.tempFilePath) {
+		if (this.tempFilePath || !this.persistFullOutput) {
 			return;
 		}
 		this.tempFilePath = defaultTempFilePath(this.tempFilePrefix);
