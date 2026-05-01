@@ -3,6 +3,14 @@ import type { SourceInfo } from "./source-info.js";
 
 export type SlashCommandSource = "extension" | "prompt" | "skill";
 
+/** Source-aware command activation. Built-in commands are intentionally out of scope. */
+export interface ActiveCommandSelection {
+	/** Extension command invocation names (e.g. "preset" or "conflicting:2"). */
+	extension?: string[];
+	/** Prompt template command names (without leading slash). */
+	prompt?: string[];
+}
+
 export interface SlashCommandInfo {
 	name: string;
 	description?: string;

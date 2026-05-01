@@ -54,6 +54,7 @@ import {
 	type MessageStartEvent,
 	type MessageUpdateEvent,
 	type ReplacedSessionContext,
+	type ResolvedCommand,
 	type SessionBeforeCompactResult,
 	type SessionBeforeTreeResult,
 	type SessionStartEvent,
@@ -76,7 +77,8 @@ import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.j
 import type { BranchSummaryEntry, CompactionEntry, SessionManager } from "./session-manager.js";
 import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader } from "./session-manager.js";
 import type { SettingsManager } from "./settings-manager.js";
-import type { SlashCommandInfo } from "./slash-commands.js";
+import type { Skill } from "./skills.js";
+import type { ActiveCommandSelection, SlashCommandInfo } from "./slash-commands.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.js";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
@@ -301,6 +303,11 @@ export class AgentSession {
 	private _toolDefinitions: Map<string, ToolDefinitionEntry> = new Map();
 	private _toolPromptSnippets: Map<string, string> = new Map();
 	private _toolPromptGuidelines: Map<string, string[]> = new Map();
+
+	// Active resource sets. Undefined means "all currently loaded/registered resources are active".
+	private _activeSkillNames: Set<string> | undefined;
+	private _activePromptCommandNames: Set<string> | undefined;
+	private _activeExtensionCommandNames: Set<string> | undefined;
 
 	// Base system prompt (without extension appends) - used to apply fresh appends each turn
 	private _baseSystemPrompt = "";
@@ -862,9 +869,115 @@ export class AgentSession {
 		this._scopedModels = scopedModels;
 	}
 
-	/** File-based prompt templates */
+	/** File-based prompt templates (loaded, regardless of active state). */
 	get promptTemplates(): ReadonlyArray<PromptTemplate> {
 		return this._resourceLoader.getPrompts().prompts;
+	}
+
+	/** Active file-based prompt templates. */
+	get activePromptTemplates(): ReadonlyArray<PromptTemplate> {
+		return this.getActivePromptTemplates();
+	}
+
+	/** Get all loaded skills. */
+	getAllSkills(): Skill[] {
+		return [...this._resourceLoader.getSkills().skills];
+	}
+
+	/** Get loaded skills that are currently active/invocable. */
+	getActiveSkills(): Skill[] {
+		const allSkills = this.getAllSkills();
+		const activeNames = this._activeSkillNames;
+		if (!activeNames) {
+			return allSkills;
+		}
+		return allSkills.filter((skill) => activeNames.has(skill.name));
+	}
+
+	/** Set active skills by skill name. Unknown names are preserved for future reloads. */
+	setActiveSkills(skillNames: string[]): void {
+		this._activeSkillNames = new Set(skillNames);
+		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		this.agent.state.systemPrompt = this._baseSystemPrompt;
+	}
+
+	/** Get all loaded prompt templates that may be exposed as slash commands. */
+	getAllPromptTemplates(): PromptTemplate[] {
+		return [...this.promptTemplates];
+	}
+
+	/** Get active prompt templates that may be expanded/invoked. */
+	getActivePromptTemplates(): PromptTemplate[] {
+		const allTemplates = this.getAllPromptTemplates();
+		const activeNames = this._activePromptCommandNames;
+		if (!activeNames) {
+			return allTemplates;
+		}
+		return allTemplates.filter((template) => activeNames.has(template.name));
+	}
+
+	/** Get all registered extension slash commands, including inactive commands. */
+	getAllExtensionCommands(): ResolvedCommand[] {
+		return this._extensionRunner.getRegisteredCommands();
+	}
+
+	/** Get active registered extension slash commands. */
+	getActiveExtensionCommands(): ResolvedCommand[] {
+		const allCommands = this.getAllExtensionCommands();
+		const activeNames = this._activeExtensionCommandNames;
+		if (!activeNames) {
+			return allCommands;
+		}
+		return allCommands.filter((command) => activeNames.has(command.invocationName));
+	}
+
+	/** Get all loaded/registered non-built-in slash commands. */
+	getAllCommands(): SlashCommandInfo[] {
+		return this._buildCommandInfo({ activeOnly: false });
+	}
+
+	/** Get active/invocable non-built-in slash commands. */
+	getActiveCommands(): SlashCommandInfo[] {
+		return this._buildCommandInfo({ activeOnly: true });
+	}
+
+	/** Set active prompt/extension commands. Built-in commands are unaffected. */
+	setActiveCommands(commands: ActiveCommandSelection): void {
+		if (commands.extension !== undefined) {
+			this._activeExtensionCommandNames = new Set(commands.extension);
+		}
+		if (commands.prompt !== undefined) {
+			this._activePromptCommandNames = new Set(commands.prompt);
+		}
+	}
+
+	private _buildCommandInfo(options: { activeOnly: boolean }): SlashCommandInfo[] {
+		const extensionCommands = (
+			options.activeOnly ? this.getActiveExtensionCommands() : this.getAllExtensionCommands()
+		).map((command) => ({
+			name: command.invocationName,
+			description: command.description,
+			source: "extension" as const,
+			sourceInfo: command.sourceInfo,
+		}));
+
+		const templates = (options.activeOnly ? this.getActivePromptTemplates() : this.getAllPromptTemplates()).map(
+			(template) => ({
+				name: template.name,
+				description: template.description,
+				source: "prompt" as const,
+				sourceInfo: template.sourceInfo,
+			}),
+		);
+
+		const skills = (options.activeOnly ? this.getActiveSkills() : this.getAllSkills()).map((skill) => ({
+			name: `skill:${skill.name}`,
+			description: skill.description,
+			source: "skill" as const,
+			sourceInfo: skill.sourceInfo,
+		}));
+
+		return [...extensionCommands, ...templates, ...skills];
 	}
 
 	private _normalizePromptSnippet(text: string | undefined): string | undefined {
@@ -911,12 +1024,12 @@ export class AgentSession {
 		const loaderAppendSystemPrompt = this._resourceLoader.getAppendSystemPrompt();
 		const appendSystemPrompt =
 			loaderAppendSystemPrompt.length > 0 ? loaderAppendSystemPrompt.join("\n\n") : undefined;
-		const loadedSkills = this._resourceLoader.getSkills().skills;
+		const activeSkills = this.getActiveSkills();
 		const loadedContextFiles = this._resourceLoader.getAgentsFiles().agentsFiles;
 
 		this._baseSystemPromptOptions = {
 			cwd: this._cwd,
-			skills: loadedSkills,
+			skills: activeSkills,
 			contextFiles: loadedContextFiles,
 			customPrompt: loaderSystemPrompt,
 			appendSystemPrompt,
@@ -980,7 +1093,7 @@ export class AgentSession {
 			let expandedText = currentText;
 			if (expandPromptTemplates) {
 				expandedText = this._expandSkillCommand(expandedText);
-				expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
+				expandedText = this._expandPromptTemplateCommand(expandedText);
 			}
 
 			// If streaming, queue via steer() or followUp() based on option
@@ -1086,6 +1199,18 @@ export class AgentSession {
 		await this.waitForRetry();
 	}
 
+	private isSkillActive(skillName: string): boolean {
+		return !this._activeSkillNames || this._activeSkillNames.has(skillName);
+	}
+
+	private isPromptCommandActive(commandName: string): boolean {
+		return !this._activePromptCommandNames || this._activePromptCommandNames.has(commandName);
+	}
+
+	private isExtensionCommandActive(commandName: string): boolean {
+		return !this._activeExtensionCommandNames || this._activeExtensionCommandNames.has(commandName);
+	}
+
 	/**
 	 * Try to execute an extension command. Returns true if command was found and executed.
 	 */
@@ -1097,6 +1222,9 @@ export class AgentSession {
 
 		const command = this._extensionRunner.getCommand(commandName);
 		if (!command) return false;
+		if (!this.isExtensionCommandActive(command.invocationName)) {
+			throw new Error(`Extension command "/${commandName}" is inactive.`);
+		}
 
 		// Get command context from extension runner (includes session control methods)
 		const ctx = this._extensionRunner.createCommandContext();
@@ -1127,8 +1255,11 @@ export class AgentSession {
 		const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex);
 		const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim();
 
-		const skill = this.resourceLoader.getSkills().skills.find((s) => s.name === skillName);
+		const skill = this.getAllSkills().find((s) => s.name === skillName);
 		if (!skill) return text; // Unknown skill, pass through
+		if (!this.isSkillActive(skill.name)) {
+			throw new Error(`Skill command "/skill:${skill.name}" is inactive.`);
+		}
 
 		try {
 			const content = readFileSync(skill.filePath, "utf-8");
@@ -1144,6 +1275,20 @@ export class AgentSession {
 			});
 			return text; // Return original on error
 		}
+	}
+
+	private _expandPromptTemplateCommand(text: string): string {
+		if (!text.startsWith("/")) return text;
+
+		const spaceIndex = text.indexOf(" ");
+		const templateName = spaceIndex === -1 ? text.slice(1) : text.slice(1, spaceIndex);
+		const template = this.getAllPromptTemplates().find((candidate) => candidate.name === templateName);
+		if (!template) return text;
+		if (!this.isPromptCommandActive(template.name)) {
+			throw new Error(`Prompt command "/${template.name}" is inactive.`);
+		}
+
+		return expandPromptTemplate(text, this.getActivePromptTemplates());
 	}
 
 	/**
@@ -1162,7 +1307,7 @@ export class AgentSession {
 
 		// Expand skill commands and prompt templates
 		let expandedText = this._expandSkillCommand(text);
-		expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
+		expandedText = this._expandPromptTemplateCommand(expandedText);
 
 		await this._queueSteer(expandedText, images);
 	}
@@ -1182,7 +1327,7 @@ export class AgentSession {
 
 		// Expand skill commands and prompt templates
 		let expandedText = this._expandSkillCommand(text);
-		expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
+		expandedText = this._expandPromptTemplateCommand(expandedText);
 
 		await this._queueFollowUp(expandedText, images);
 	}
@@ -2119,31 +2264,6 @@ export class AgentSession {
 	}
 
 	private _bindExtensionCore(runner: ExtensionRunner): void {
-		const getCommands = (): SlashCommandInfo[] => {
-			const extensionCommands: SlashCommandInfo[] = runner.getRegisteredCommands().map((command) => ({
-				name: command.invocationName,
-				description: command.description,
-				source: "extension",
-				sourceInfo: command.sourceInfo,
-			}));
-
-			const templates: SlashCommandInfo[] = this.promptTemplates.map((template) => ({
-				name: template.name,
-				description: template.description,
-				source: "prompt",
-				sourceInfo: template.sourceInfo,
-			}));
-
-			const skills: SlashCommandInfo[] = this._resourceLoader.getSkills().skills.map((skill) => ({
-				name: `skill:${skill.name}`,
-				description: skill.description,
-				source: "skill",
-				sourceInfo: skill.sourceInfo,
-			}));
-
-			return [...extensionCommands, ...templates, ...skills];
-		};
-
 		runner.bindCore(
 			{
 				sendMessage: (message, options) => {
@@ -2180,7 +2300,13 @@ export class AgentSession {
 				getAllTools: () => this.getAllTools(),
 				setActiveTools: (toolNames) => this.setActiveToolsByName(toolNames),
 				refreshTools: () => this._refreshToolRegistry(),
-				getCommands,
+				getAllSkills: () => this.getAllSkills(),
+				getActiveSkills: () => this.getActiveSkills(),
+				setActiveSkills: (skillNames) => this.setActiveSkills(skillNames),
+				getCommands: () => this.getAllCommands(),
+				getAllCommands: () => this.getAllCommands(),
+				getActiveCommands: () => this.getActiveCommands(),
+				setActiveCommands: (commands) => this.setActiveCommands(commands),
 				setModel: async (model) => {
 					if (!this.modelRegistry.hasConfiguredAuth(model)) return false;
 					await this.setModel(model);

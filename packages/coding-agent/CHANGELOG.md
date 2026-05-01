@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added first-class active skill and prompt/extension command APIs so extensions can distinguish loaded resources from active/invocable resources and enforce inactive slash commands locally.
 - Added `ctx.ui.setWorkingVisible()` so extensions can hide the built-in interactive working loader row without reserving layout space, plus a border-status editor example that moves working state into a custom editor border ([#3674](https://github.com/badlogic/pi-mono/issues/3674))
 
 ### Fixed

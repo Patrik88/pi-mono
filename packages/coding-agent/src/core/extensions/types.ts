@@ -56,7 +56,8 @@ import type {
 	SessionEntry,
 	SessionManager,
 } from "../session-manager.js";
-import type { SlashCommandInfo } from "../slash-commands.js";
+import type { Skill } from "../skills.js";
+import type { ActiveCommandSelection, SlashCommandInfo } from "../slash-commands.js";
 import type { SourceInfo } from "../source-info.js";
 import type { BuildSystemPromptOptions } from "../system-prompt.js";
 import type { BashOperations } from "../tools/bash.js";
@@ -1209,8 +1210,31 @@ export interface ExtensionAPI {
 	/** Set the active tools by name. */
 	setActiveTools(toolNames: string[]): void;
 
-	/** Get available slash commands in the current session. */
+	/** Get all loaded skills. */
+	getAllSkills(): Skill[];
+
+	/** Get loaded skills that are currently active/invocable. */
+	getActiveSkills(): Skill[];
+
+	/** Set active skills by skill name. */
+	setActiveSkills(skillNames: string[]): void;
+
+	/**
+	 * Get available slash commands in the current session.
+	 *
+	 * Compatibility alias for getAllCommands(): returns loaded/registered
+	 * extension commands, prompt commands, and skill commands, even if inactive.
+	 */
 	getCommands(): SlashCommandInfo[];
+
+	/** Get all loaded/registered non-built-in slash commands. */
+	getAllCommands(): SlashCommandInfo[];
+
+	/** Get active/invocable non-built-in slash commands. */
+	getActiveCommands(): SlashCommandInfo[];
+
+	/** Set active prompt/extension commands. Built-in commands are unaffected. */
+	setActiveCommands(commands: ActiveCommandSelection): void;
 
 	// =========================================================================
 	// Model and Thinking Level
@@ -1415,7 +1439,15 @@ export type ToolInfo = Pick<ToolDefinition, "name" | "description" | "parameters
 
 export type GetAllToolsHandler = () => ToolInfo[];
 
+export type GetAllSkillsHandler = () => Skill[];
+
+export type GetActiveSkillsHandler = () => Skill[];
+
+export type SetActiveSkillsHandler = (skillNames: string[]) => void;
+
 export type GetCommandsHandler = () => SlashCommandInfo[];
+
+export type SetActiveCommandsHandler = (commands: ActiveCommandSelection) => void;
 
 export type SetActiveToolsHandler = (toolNames: string[]) => void;
 
@@ -1468,7 +1500,13 @@ export interface ExtensionActions {
 	getAllTools: GetAllToolsHandler;
 	setActiveTools: SetActiveToolsHandler;
 	refreshTools: RefreshToolsHandler;
+	getAllSkills: GetAllSkillsHandler;
+	getActiveSkills: GetActiveSkillsHandler;
+	setActiveSkills: SetActiveSkillsHandler;
 	getCommands: GetCommandsHandler;
+	getAllCommands: GetCommandsHandler;
+	getActiveCommands: GetCommandsHandler;
+	setActiveCommands: SetActiveCommandsHandler;
 	setModel: SetModelHandler;
 	getThinkingLevel: GetThinkingLevelHandler;
 	setThinkingLevel: SetThinkingLevelHandler;
