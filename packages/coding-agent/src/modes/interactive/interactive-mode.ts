@@ -2870,6 +2870,11 @@ export class InteractiveMode {
 				this.updateEditorBorderColor();
 				break;
 
+			case "active_resources_changed":
+				this.setupAutocompleteProvider();
+				this.ui.requestRender();
+				break;
+
 			case "message_start":
 				if (event.message.role === "custom") {
 					this.addMessageToChat(event.message);
