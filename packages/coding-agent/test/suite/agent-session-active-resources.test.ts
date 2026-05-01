@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxAssistantMessage } from "@mariozechner/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
+import type { AgentSessionEvent } from "../../src/core/agent-session.js";
 import type { PromptTemplate } from "../../src/core/prompt-templates.js";
 import type { Skill } from "../../src/core/skills.js";
 import { createSyntheticSourceInfo } from "../../src/core/source-info.js";
@@ -135,6 +136,52 @@ describe("AgentSession active resources", () => {
 		await harness.session.prompt("/review src/index.ts");
 
 		expect(getMessageText(harness.session.messages[0])).toBe("Review this: src/index.ts");
+	});
+
+	it("emits active resource change events after active filters update", async () => {
+		const harness = await createResourceHarness([
+			{
+				factory: (pi) => {
+					pi.registerCommand("inspect", {
+						description: "Inspect command",
+						handler: async () => {},
+					});
+				},
+			},
+		]);
+		const events: AgentSessionEvent[] = [];
+		const snapshots: Array<{ activeSkills: string[]; activeCommands: string[] }> = [];
+		const unsubscribe = harness.session.subscribe((event) => {
+			if (event.type !== "active_resources_changed") return;
+			events.push(event);
+			snapshots.push({
+				activeSkills: harness.session.getActiveSkills().map((skill) => skill.name),
+				activeCommands: harness.session
+					.getActiveCommands()
+					.map((command) => `${command.source}:${command.name}`)
+					.sort(),
+			});
+		});
+
+		harness.session.setActiveSkills([]);
+		harness.session.setActiveCommands({ prompt: [], extension: ["inspect"] });
+		harness.session.setActiveCommands({});
+		unsubscribe();
+
+		expect(events).toEqual([
+			{ type: "active_resources_changed", resources: ["skills"] },
+			{ type: "active_resources_changed", resources: ["extension_commands", "prompt_commands"] },
+		]);
+		expect(snapshots).toEqual([
+			{
+				activeSkills: [],
+				activeCommands: ["extension:inspect", "prompt:review"],
+			},
+			{
+				activeSkills: [],
+				activeCommands: ["extension:inspect"],
+			},
+		]);
 	});
 
 	it("blocks inactive extension commands without falling through to the provider", async () => {

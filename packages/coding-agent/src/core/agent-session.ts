@@ -124,6 +124,10 @@ export type AgentSessionEvent =
 	| { type: "compaction_start"; reason: "manual" | "threshold" | "overflow" }
 	| { type: "session_info_changed"; name: string | undefined }
 	| {
+			type: "active_resources_changed";
+			resources: Array<"skills" | "prompt_commands" | "extension_commands">;
+	  }
+	| {
 			type: "compaction_end";
 			reason: "manual" | "threshold" | "overflow";
 			result: CompactionResult | undefined;
@@ -899,6 +903,7 @@ export class AgentSession {
 		this._activeSkillNames = new Set(skillNames);
 		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
 		this.agent.state.systemPrompt = this._baseSystemPrompt;
+		this._emit({ type: "active_resources_changed", resources: ["skills"] });
 	}
 
 	/** Get all loaded prompt templates that may be exposed as slash commands. */
@@ -943,11 +948,17 @@ export class AgentSession {
 
 	/** Set active prompt/extension commands. Built-in commands are unaffected. */
 	setActiveCommands(commands: ActiveCommandSelection): void {
+		const changedResources: Array<"prompt_commands" | "extension_commands"> = [];
 		if (commands.extension !== undefined) {
 			this._activeExtensionCommandNames = new Set(commands.extension);
+			changedResources.push("extension_commands");
 		}
 		if (commands.prompt !== undefined) {
 			this._activePromptCommandNames = new Set(commands.prompt);
+			changedResources.push("prompt_commands");
+		}
+		if (changedResources.length > 0) {
+			this._emit({ type: "active_resources_changed", resources: changedResources });
 		}
 	}
 
