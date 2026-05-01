@@ -331,7 +331,13 @@ export class ExtensionRunner {
 		this.runtime.getAllTools = actions.getAllTools;
 		this.runtime.setActiveTools = actions.setActiveTools;
 		this.runtime.refreshTools = actions.refreshTools;
+		this.runtime.getAllSkills = actions.getAllSkills;
+		this.runtime.getActiveSkills = actions.getActiveSkills;
+		this.runtime.setActiveSkills = actions.setActiveSkills;
 		this.runtime.getCommands = actions.getCommands;
+		this.runtime.getAllCommands = actions.getAllCommands;
+		this.runtime.getActiveCommands = actions.getActiveCommands;
+		this.runtime.setActiveCommands = actions.setActiveCommands;
 		this.runtime.setModel = actions.setModel;
 		this.runtime.getThinkingLevel = actions.getThinkingLevel;
 		this.runtime.setThinkingLevel = actions.setThinkingLevel;

@@ -6,6 +6,7 @@
 
 - Added built-in llama.cpp router support with `/login` connection setup and `/llama` Hugging Face model search and downloads, explicit loading, unloading, and live progress. See [llama.cpp](docs/llama-cpp.md).
 - Added extension registration for complete pi-ai providers, including native authentication, model refresh, filtering, and streaming behavior.
+- Added first-class active skill and prompt/extension command APIs so extensions can distinguish loaded resources from active/invocable resources and enforce inactive slash commands locally.
 
 ### Fixed
 
