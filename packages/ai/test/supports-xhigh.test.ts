@@ -26,6 +26,11 @@ describe("supportsXhigh", () => {
 		expect(supportsXhigh(model!)).toBe(true);
 	});
 
+	it("returns true for custom GPT-5.6 models", () => {
+		const model = { ...getModel("openai-codex", "gpt-5.5"), id: "gpt-5.6-sol" };
+		expect(supportsXhigh(model)).toBe(true);
+	});
+
 	it("returns true for OpenRouter Opus 4.6 (openai-completions API)", () => {
 		const model = getModel("openrouter", "anthropic/claude-opus-4.6");
 		expect(model).toBeDefined();

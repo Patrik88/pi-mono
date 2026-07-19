@@ -406,7 +406,10 @@ describe("openai-codex streaming", () => {
 		await streamResult.result();
 	});
 
-	it("preserves gpt-5.5 xhigh reasoning effort from simple options", async () => {
+	it.each([
+		["gpt-5.5", "xhigh"],
+		["gpt-5.6-sol", "max"],
+	] as const)("maps %s xhigh reasoning effort to %s", async (modelId, expectedEffort) => {
 		const tempDir = mkdtempSync(join(tmpdir(), "pi-codex-stream-"));
 		process.env.PI_CODING_AGENT_DIR = tempDir;
 		const token = mockToken();
@@ -440,8 +443,8 @@ describe("openai-codex streaming", () => {
 		}) as typeof fetch;
 
 		const model: Model<"openai-codex-responses"> = {
-			id: "gpt-5.5",
-			name: "GPT-5.5",
+			id: modelId,
+			name: modelId,
 			api: "openai-codex-responses",
 			provider: "openai-codex",
 			baseUrl: "https://chatgpt.com/backend-api",
@@ -458,7 +461,7 @@ describe("openai-codex streaming", () => {
 
 		await streamSimpleOpenAICodexResponses(model, context, { apiKey: token, reasoning: "xhigh" }).result();
 
-		expect(requestedReasoning).toEqual({ effort: "xhigh", summary: "auto" });
+		expect(requestedReasoning).toEqual({ effort: expectedEffort, summary: "auto" });
 	});
 
 	it.each(["gpt-5.3-codex", "gpt-5.4", "gpt-5.5"])("clamps %s minimal reasoning effort to low", async (modelId) => {
