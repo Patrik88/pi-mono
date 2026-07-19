@@ -165,8 +165,29 @@ export interface SessionTreeNode {
 	labelTimestamp?: string;
 }
 
+export type SessionContextItemKind = "message" | "custom_message" | "branch_summary" | "compaction_summary";
+
+export type SessionContextSourcePhase =
+	| "normal"
+	| "compaction-summary"
+	| "post-compaction-kept"
+	| "post-compaction-after";
+
+export interface SessionContextItem {
+	message: AgentMessage;
+	entryId: string;
+	entry: SessionEntry;
+	kind: SessionContextItemKind;
+	source: {
+		phase: SessionContextSourcePhase;
+		compactionEntryId?: string;
+		originalEntryId?: string;
+	};
+}
+
 export interface SessionContext {
 	messages: AgentMessage[];
+	items?: SessionContextItem[];
 	thinkingLevel: string;
 	model: { provider: string; modelId: string } | null;
 }
@@ -465,8 +486,77 @@ export function buildSessionContext(
 ): SessionContext {
 	const path = buildSessionPath(entries, leafId, byId);
 	const { thinkingLevel, model } = getSessionContextSettings(path);
-	const messages = buildContextEntries(entries, leafId, byId).flatMap(sessionEntryToContextMessages);
-	return { messages, thinkingLevel, model };
+
+	let compaction: CompactionEntry | null = null;
+	for (const entry of path) {
+		if (entry.type === "compaction") {
+			compaction = entry;
+		}
+	}
+
+	const messages: AgentMessage[] = [];
+	const items: SessionContextItem[] = [];
+
+	const contextItemKind = (entry: SessionEntry): SessionContextItemKind => {
+		switch (entry.type) {
+			case "custom_message":
+				return "custom_message";
+			case "branch_summary":
+				return "branch_summary";
+			case "compaction":
+				return "compaction_summary";
+			default:
+				return "message";
+		}
+	};
+
+	const appendEntry = (
+		entry: SessionEntry,
+		phase: SessionContextSourcePhase,
+		source?: Omit<SessionContextItem["source"], "phase">,
+	) => {
+		const kind = contextItemKind(entry);
+		for (const message of sessionEntryToContextMessages(entry)) {
+			messages.push(message);
+			items.push({
+				message,
+				entryId: entry.id,
+				entry,
+				kind,
+				source: { phase, ...source },
+			});
+		}
+	};
+
+	const compactionIdx = compaction ? path.findIndex((entry) => entry.id === compaction.id) : -1;
+	if (compaction && compactionIdx >= 0) {
+		// Emit summary first
+		appendEntry(compaction, "compaction-summary", { compactionEntryId: compaction.id });
+
+		// Emit kept messages (before compaction, starting from firstKeptEntryId)
+		let foundFirstKept = false;
+		for (let i = 0; i < compactionIdx; i++) {
+			const entry = path[i];
+			if (entry.id === compaction.firstKeptEntryId) {
+				foundFirstKept = true;
+			}
+			if (foundFirstKept) {
+				appendEntry(entry, "post-compaction-kept", { compactionEntryId: compaction.id, originalEntryId: entry.id });
+			}
+		}
+
+		// Emit messages after compaction
+		for (let i = compactionIdx + 1; i < path.length; i++) {
+			appendEntry(path[i], "post-compaction-after");
+		}
+	} else {
+		// No compaction - emit all entries along the path
+		for (const entry of path) {
+			appendEntry(entry, "normal");
+		}
+	}
+
+	return { messages, items, thinkingLevel, model };
 }
 
 /**
