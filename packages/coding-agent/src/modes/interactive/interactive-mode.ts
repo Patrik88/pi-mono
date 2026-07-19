@@ -3007,6 +3007,11 @@ export class InteractiveMode {
 		return textBlocks.map((c) => (c as { text: string }).text).join("");
 	}
 
+	private getUserMessageImages(message: Message): ImageContent[] {
+		if (message.role !== "user" || typeof message.content === "string") return [];
+		return message.content.filter((content): content is ImageContent => content.type === "image");
+	}
+
 	/**
 	 * Show a status message in the chat.
 	 *
@@ -3074,11 +3079,17 @@ export class InteractiveMode {
 			}
 			case "user": {
 				const textContent = this.getUserMessageText(message);
-				if (textContent) {
+				const imageContent = this.getUserMessageImages(message);
+				if (textContent || imageContent.length > 0) {
 					if (this.chatContainer.children.length > 0) {
 						this.chatContainer.addChild(new Spacer(1));
 					}
 					const skillBlock = parseSkillBlock(textContent);
+					const userMessageOptions = {
+						showImages: this.settingsManager.getShowImages(),
+						imageWidthCells: this.settingsManager.getImageWidthCells(),
+						onImagesChanged: () => this.ui.requestRender(),
+					};
 					if (skillBlock) {
 						// Render skill block (collapsible)
 						const component = new SkillInvocationMessageComponent(
@@ -3092,14 +3103,27 @@ export class InteractiveMode {
 							const userComponent = new UserMessageComponent(
 								skillBlock.userMessage,
 								this.getMarkdownThemeWithSettings(),
+								userMessageOptions,
 							);
 							this.chatContainer.addChild(userComponent);
 						}
+						if (imageContent.length > 0) {
+							const imageComponent = new UserMessageComponent(
+								imageContent,
+								this.getMarkdownThemeWithSettings(),
+								userMessageOptions,
+							);
+							this.chatContainer.addChild(imageComponent);
+						}
 					} else {
-						const userComponent = new UserMessageComponent(textContent, this.getMarkdownThemeWithSettings());
+						const userComponent = new UserMessageComponent(
+							typeof message.content === "string" ? textContent : message.content,
+							this.getMarkdownThemeWithSettings(),
+							userMessageOptions,
+						);
 						this.chatContainer.addChild(userComponent);
 					}
-					if (options?.populateHistory) {
+					if (options?.populateHistory && textContent) {
 						this.editor.addToHistory?.(textContent);
 					}
 				}
@@ -3803,7 +3827,7 @@ export class InteractiveMode {
 					onShowImagesChange: (enabled) => {
 						this.settingsManager.setShowImages(enabled);
 						for (const child of this.chatContainer.children) {
-							if (child instanceof ToolExecutionComponent) {
+							if (child instanceof ToolExecutionComponent || child instanceof UserMessageComponent) {
 								child.setShowImages(enabled);
 							}
 						}
@@ -3811,7 +3835,7 @@ export class InteractiveMode {
 					onImageWidthCellsChange: (width) => {
 						this.settingsManager.setImageWidthCells(width);
 						for (const child of this.chatContainer.children) {
-							if (child instanceof ToolExecutionComponent) {
+							if (child instanceof ToolExecutionComponent || child instanceof UserMessageComponent) {
 								child.setImageWidthCells(width);
 							}
 						}
