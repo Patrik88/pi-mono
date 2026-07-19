@@ -159,8 +159,29 @@ export interface SessionTreeNode {
 	labelTimestamp?: string;
 }
 
+export type SessionContextItemKind = "message" | "custom_message" | "branch_summary" | "compaction_summary";
+
+export type SessionContextSourcePhase =
+	| "normal"
+	| "compaction-summary"
+	| "post-compaction-kept"
+	| "post-compaction-after";
+
+export interface SessionContextItem {
+	message: AgentMessage;
+	entryId: string;
+	entry: SessionEntry;
+	kind: SessionContextItemKind;
+	source: {
+		phase: SessionContextSourcePhase;
+		compactionEntryId?: string;
+		originalEntryId?: string;
+	};
+}
+
 export interface SessionContext {
 	messages: AgentMessage[];
+	items?: SessionContextItem[];
 	thinkingLevel: string;
 	model: { provider: string; modelId: string } | null;
 }
@@ -368,28 +389,63 @@ export function buildSessionContext(
 		}
 	}
 
-	// Build messages and collect corresponding entries
+	// Build messages and collect corresponding source items.
 	// When there's a compaction, we need to:
 	// 1. Emit summary first (entry = compaction)
 	// 2. Emit kept messages (from firstKeptEntryId up to compaction)
 	// 3. Emit messages after compaction
 	const messages: AgentMessage[] = [];
+	const items: SessionContextItem[] = [];
 
-	const appendMessage = (entry: SessionEntry) => {
+	const appendContextItem = (
+		entry: SessionEntry,
+		message: AgentMessage,
+		kind: SessionContextItemKind,
+		phase: SessionContextSourcePhase,
+		source?: Omit<SessionContextItem["source"], "phase">,
+	) => {
+		messages.push(message);
+		items.push({
+			message,
+			entryId: entry.id,
+			entry,
+			kind,
+			source: { phase, ...source },
+		});
+	};
+
+	const appendMessage = (entry: SessionEntry, phase: SessionContextSourcePhase, compactionEntryId?: string) => {
+		const source = compactionEntryId ? { compactionEntryId, originalEntryId: entry.id } : undefined;
 		if (entry.type === "message") {
-			messages.push(entry.message);
+			appendContextItem(entry, entry.message, "message", phase, source);
 		} else if (entry.type === "custom_message") {
-			messages.push(
+			appendContextItem(
+				entry,
 				createCustomMessage(entry.customType, entry.content, entry.display, entry.details, entry.timestamp),
+				"custom_message",
+				phase,
+				source,
 			);
 		} else if (entry.type === "branch_summary" && entry.summary) {
-			messages.push(createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp));
+			appendContextItem(
+				entry,
+				createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp),
+				"branch_summary",
+				phase,
+				source,
+			);
 		}
 	};
 
 	if (compaction) {
 		// Emit summary first
-		messages.push(createCompactionSummaryMessage(compaction.summary, compaction.tokensBefore, compaction.timestamp));
+		appendContextItem(
+			compaction,
+			createCompactionSummaryMessage(compaction.summary, compaction.tokensBefore, compaction.timestamp),
+			"compaction_summary",
+			"compaction-summary",
+			{ compactionEntryId: compaction.id },
+		);
 
 		// Find compaction index in path
 		const compactionIdx = path.findIndex((e) => e.type === "compaction" && e.id === compaction.id);
@@ -402,23 +458,23 @@ export function buildSessionContext(
 				foundFirstKept = true;
 			}
 			if (foundFirstKept) {
-				appendMessage(entry);
+				appendMessage(entry, "post-compaction-kept", compaction.id);
 			}
 		}
 
 		// Emit messages after compaction
 		for (let i = compactionIdx + 1; i < path.length; i++) {
 			const entry = path[i];
-			appendMessage(entry);
+			appendMessage(entry, "post-compaction-after");
 		}
 	} else {
 		// No compaction - emit all messages, handle branch summaries and custom messages
 		for (const entry of path) {
-			appendMessage(entry);
+			appendMessage(entry, "normal");
 		}
 	}
 
-	return { messages, thinkingLevel, model };
+	return { messages, items, thinkingLevel, model };
 }
 
 /**

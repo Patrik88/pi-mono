@@ -13,6 +13,7 @@ import { createJiti } from "@mariozechner/jiti";
 import * as _bundledPiAgentCore from "@mariozechner/pi-agent-core";
 import * as _bundledPiAi from "@mariozechner/pi-ai";
 import * as _bundledPiAiOauth from "@mariozechner/pi-ai/oauth";
+import * as _bundledPiAiOpenAIResponsesConversion from "@mariozechner/pi-ai/openai-responses-conversion";
 import type { KeyId } from "@mariozechner/pi-tui";
 import * as _bundledPiTui from "@mariozechner/pi-tui";
 // Static imports of packages that extensions may use.
@@ -53,6 +54,7 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@mariozechner/pi-tui": _bundledPiTui,
 	"@mariozechner/pi-ai": _bundledPiAi,
 	"@mariozechner/pi-ai/oauth": _bundledPiAiOauth,
+	"@mariozechner/pi-ai/openai-responses-conversion": _bundledPiAiOpenAIResponsesConversion,
 	"@mariozechner/pi-coding-agent": _bundledPiCodingAgent,
 };
 
@@ -89,6 +91,10 @@ function getAliases(): Record<string, string> {
 		"@mariozechner/pi-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@mariozechner/pi-tui"),
 		"@mariozechner/pi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@mariozechner/pi-ai"),
 		"@mariozechner/pi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@mariozechner/pi-ai/oauth"),
+		"@mariozechner/pi-ai/openai-responses-conversion": resolveWorkspaceOrImport(
+			"ai/dist/providers/openai-responses-conversion.js",
+			"@mariozechner/pi-ai/openai-responses-conversion",
+		),
 		typebox: typeboxEntry,
 		"typebox/compile": typeboxCompileEntry,
 		"typebox/value": typeboxValueEntry,

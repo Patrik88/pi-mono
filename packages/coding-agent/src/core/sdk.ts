@@ -125,6 +125,14 @@ function getDefaultAgentDir(): string {
 	return getAgentDir();
 }
 
+function messagesMatch(left: AgentMessage[], right: AgentMessage[]): boolean {
+	if (left.length !== right.length) return false;
+	for (let i = 0; i < left.length; i++) {
+		if (JSON.stringify(left[i]) !== JSON.stringify(right[i])) return false;
+	}
+	return true;
+}
+
 function getOpenRouterAttributionHeaders(
 	model: Model<any>,
 	settingsManager: SettingsManager,
@@ -351,7 +359,11 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		transformContext: async (messages) => {
 			const runner = extensionRunnerRef.current;
 			if (!runner) return messages;
-			return runner.emitContext(messages);
+			const currentSessionContext = sessionManager.buildSessionContext();
+			const items = messagesMatch(messages, currentSessionContext.messages)
+				? currentSessionContext.items
+				: undefined;
+			return runner.emitContext(messages, items);
 		},
 		steeringMode: settingsManager.getSteeringMode(),
 		followUpMode: settingsManager.getFollowUpMode(),

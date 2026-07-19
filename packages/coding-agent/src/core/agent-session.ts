@@ -457,7 +457,7 @@ export class AgentSession {
 	private _lastAssistantMessage: AssistantMessage | undefined = undefined;
 
 	/** Internal handler for agent events - shared by subscribe and reconnect */
-	private _handleAgentEvent = (event: AgentEvent): void => {
+	private _handleAgentEvent = (event: AgentEvent): Promise<void> => {
 		// Create retry promise synchronously before queueing async processing.
 		// Agent.emit() calls this handler synchronously, and prompt() calls waitForRetry()
 		// as soon as agent.prompt() resolves. If _retryPromise is created only inside
@@ -470,8 +470,12 @@ export class AgentSession {
 			() => this._processAgentEvent(event),
 		);
 
-		// Keep queue alive if an event handler fails
-		this._agentEventQueue.catch(() => {});
+		// Agent.processEvents awaits listener promises. Return the queued processing so
+		// session persistence and extension events for message_end complete before the
+		// next provider request builds context from SessionManager, while preserving the
+		// existing best-effort behavior that event-handler failures do not abort turns.
+		const processing = this._agentEventQueue;
+		return processing.catch(() => {});
 	};
 
 	private _createRetryPromiseForAgentEnd(event: AgentEvent): void {
