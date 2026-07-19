@@ -9,8 +9,9 @@ import { type Theme, theme } from "../../modes/interactive/theme/theme.ts";
 import type { ResourceDiagnostic } from "../diagnostics.ts";
 import type { KeybindingsConfig } from "../keybindings.ts";
 import type { ModelRegistry } from "../model-registry.ts";
-import type { SessionManager } from "../session-manager.ts";
+import type { SessionContextItem, SessionManager } from "../session-manager.ts";
 import type { BuildSystemPromptOptions } from "../system-prompt.ts";
+
 import type {
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
@@ -977,9 +978,24 @@ export class ExtensionRunner {
 		return undefined;
 	}
 
-	async emitContext(messages: AgentMessage[]): Promise<AgentMessage[]> {
+	async emitContext(messages: AgentMessage[], items?: SessionContextItem[]): Promise<AgentMessage[]> {
 		const ctx = this.createContext();
 		let currentMessages = structuredClone(messages);
+		let currentItems = items?.length === messages.length ? structuredClone(items) : undefined;
+
+		const alignItemsToMessages = (sourceItems: SessionContextItem[] | undefined, sourceMessages: AgentMessage[]) => {
+			if (!sourceItems || sourceItems.length !== sourceMessages.length) return undefined;
+			return sourceItems.map((item, index) => ({ ...item, message: sourceMessages[index] }));
+		};
+		const preserveItemsIfStillAligned = (
+			sourceItems: SessionContextItem[] | undefined,
+			sourceMessages: AgentMessage[],
+		) => {
+			if (!sourceItems || sourceItems.length !== sourceMessages.length) return undefined;
+			return sourceItems.every((item, index) => item.message === sourceMessages[index]) ? sourceItems : undefined;
+		};
+
+		currentItems = alignItemsToMessages(currentItems, currentMessages);
 
 		for (const ext of this.extensions) {
 			const handlers = ext.handlers.get("context");
@@ -987,11 +1003,28 @@ export class ExtensionRunner {
 
 			for (const handler of handlers) {
 				try {
-					const event: ContextEvent = { type: "context", messages: currentMessages };
-					const handlerResult = await handler(event, ctx);
+					const event: ContextEvent = currentItems
+						? { type: "context", messages: currentMessages, items: currentItems }
+						: { type: "context", messages: currentMessages };
+					const handlerResult = (await handler(event, ctx)) as ContextEventResult | undefined;
 
-					if (handlerResult && (handlerResult as ContextEventResult).messages) {
-						currentMessages = (handlerResult as ContextEventResult).messages!;
+					if (!handlerResult) {
+						currentMessages = event.messages;
+						currentItems = preserveItemsIfStillAligned(event.items, currentMessages);
+						continue;
+					}
+
+					if (handlerResult.items) {
+						if (handlerResult.messages && handlerResult.messages.length !== handlerResult.items.length) {
+							currentMessages = handlerResult.messages;
+							currentItems = undefined;
+							continue;
+						}
+						currentMessages = handlerResult.messages ?? handlerResult.items.map((item) => item.message);
+						currentItems = alignItemsToMessages(handlerResult.items, currentMessages);
+					} else if (handlerResult.messages) {
+						currentMessages = handlerResult.messages;
+						currentItems = undefined;
 					}
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);

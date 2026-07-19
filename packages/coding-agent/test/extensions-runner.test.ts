@@ -18,7 +18,7 @@ import type {
 } from "../src/core/extensions/types.ts";
 import { KeybindingsManager, type KeyId } from "../src/core/keybindings.ts";
 import type { ModelRegistry } from "../src/core/model-registry.ts";
-import { SessionManager } from "../src/core/session-manager.ts";
+import { type SessionContextItem, SessionManager } from "../src/core/session-manager.ts";
 
 describe("ExtensionRunner", () => {
 	let tempDir: string;
@@ -37,6 +37,8 @@ describe("ExtensionRunner", () => {
 	});
 
 	afterEach(() => {
+		delete (globalThis as { __receivedItems?: SessionContextItem[] }).__receivedItems;
+		delete (globalThis as { __downstreamItems?: SessionContextItem[] }).__downstreamItems;
 		fs.rmSync(tempDir, { recursive: true, force: true });
 	});
 
@@ -551,6 +553,98 @@ describe("ExtensionRunner", () => {
 			const ctx = runner.createContext();
 			expect(ctx.mode).toBe("tui");
 			expect(ctx.hasUI).toBe(true);
+		});
+	});
+
+	describe("context hook items", () => {
+		function contextItem(): {
+			messages: Array<{ role: "user"; content: string; timestamp: number }>;
+			items: SessionContextItem[];
+		} {
+			const messages = [{ role: "user" as const, content: "hello", timestamp: 1 }];
+			return {
+				messages,
+				items: [
+					{
+						message: messages[0],
+						entryId: "entry-1",
+						entry: { type: "message", id: "entry-1", parentId: null, timestamp: "now", message: messages[0] },
+						kind: "message",
+						source: { phase: "normal" },
+					},
+				],
+			};
+		}
+
+		it("passes source items aligned with context messages", async () => {
+			fs.writeFileSync(
+				path.join(extensionsDir, "items.ts"),
+				`export default function(pi) { pi.on("context", (event) => { globalThis.__receivedItems = event.items; }); }`,
+			);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
+			const { messages, items } = contextItem();
+
+			await runner.emitContext(messages, items);
+
+			expect((globalThis as { __receivedItems?: SessionContextItem[] }).__receivedItems).toHaveLength(1);
+			expect((globalThis as { __receivedItems?: SessionContextItem[] }).__receivedItems?.[0].entryId).toBe(
+				"entry-1",
+			);
+		});
+
+		it("drops source items after a message-only transform", async () => {
+			fs.writeFileSync(
+				path.join(extensionsDir, "items.ts"),
+				`export default function(pi) {
+					pi.on("context", () => ({ messages: [{ role: "user", content: "changed", timestamp: 2 }] }));
+					pi.on("context", (event) => { globalThis.__downstreamItems = event.items; });
+				}`,
+			);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
+			const { messages, items } = contextItem();
+
+			const contextResult = await runner.emitContext(messages, items);
+
+			expect(contextResult).toEqual([{ role: "user", content: "changed", timestamp: 2 }]);
+			expect((globalThis as { __downstreamItems?: SessionContextItem[] }).__downstreamItems).toBeUndefined();
+		});
+
+		it("drops source items after an in-place message-only mutation", async () => {
+			fs.writeFileSync(
+				path.join(extensionsDir, "items.ts"),
+				`export default function(pi) {
+					pi.on("context", (event) => { event.messages[0] = { role: "user", content: "mutated", timestamp: 2 }; });
+					pi.on("context", (event) => { globalThis.__downstreamItems = event.items; });
+				}`,
+			);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
+			const { messages, items } = contextItem();
+
+			const contextResult = await runner.emitContext(messages, items);
+
+			expect(contextResult).toEqual([{ role: "user", content: "mutated", timestamp: 2 }]);
+			expect((globalThis as { __downstreamItems?: SessionContextItem[] }).__downstreamItems).toBeUndefined();
+		});
+
+		it("derives messages from returned source items", async () => {
+			fs.writeFileSync(
+				path.join(extensionsDir, "items.ts"),
+				`export default function(pi) {
+					pi.on("context", (event) => ({
+						items: event.items?.map((item) => ({ ...item, message: { role: "user", content: "from item", timestamp: 2 } })),
+					}));
+				}`,
+			);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
+			const { messages, items } = contextItem();
+
+			await expect(runner.emitContext(messages, items)).resolves.toEqual([
+				{ role: "user", content: "from item", timestamp: 2 },
+			]);
 		});
 	});
 

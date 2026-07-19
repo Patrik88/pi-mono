@@ -336,6 +336,64 @@ describe("AgentSession concurrent prompt guard", () => {
 		await expect(session.prompt("Second message")).resolves.not.toThrow();
 	});
 
+	it("should persist a new user message before transformContext runs", async () => {
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const sessionManager = SessionManager.inMemory();
+		const observed: Array<{ requestMessages: number; sessionMessages: number; roles: string[] }> = [];
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: {
+				model,
+				systemPrompt: "Test",
+				tools: [],
+			},
+			transformContext: async (messages) => {
+				const sessionContext = sessionManager.buildSessionContext();
+				observed.push({
+					requestMessages: messages.length,
+					sessionMessages: sessionContext.messages.length,
+					roles: sessionContext.messages.map((message) => message.role),
+				});
+				return messages;
+			},
+			streamFn: () => {
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					stream.push({ type: "start", partial: createAssistantMessage("") });
+					stream.push({ type: "done", reason: "stop", message: createAssistantMessage("Done") });
+				});
+				return stream;
+			},
+		});
+
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = await createModelRegistry(authStorage, tempDir);
+		await authStorage.modify("anthropic", async () => ({ type: "api_key", key: "test-key" }));
+		const extensionsResult = await createTestExtensionsResult([
+			(pi) => {
+				pi.on("message_end", async (event) => {
+					if (event.message.role === "user") {
+						await new Promise((resolve) => setTimeout(resolve, 25));
+					}
+				});
+			},
+		]);
+
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRuntime: getModelRuntime(modelRegistry),
+			resourceLoader: createTestResourceLoader({ extensionsResult }),
+		});
+
+		await session.prompt("First message");
+
+		expect(observed[0]).toEqual({ requestMessages: 1, sessionMessages: 1, roles: ["user"] });
+	});
+
 	it("should wait for queued agent events before emitting tool_call", async () => {
 		const model = getModel("anthropic", "claude-sonnet-4-5")!;
 		const tool = {

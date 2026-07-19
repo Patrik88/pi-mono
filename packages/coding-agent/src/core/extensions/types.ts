@@ -57,6 +57,7 @@ import type {
 	CompactionEntry,
 	CustomEntry,
 	ReadonlySessionManager,
+	SessionContextItem,
 	SessionEntry,
 	SessionManager,
 } from "../session-manager.ts";
@@ -664,6 +665,7 @@ export type SessionEvent =
 export interface ContextEvent {
 	type: "context";
 	messages: AgentMessage[];
+	items?: SessionContextItem[];
 }
 
 /** Fired before a provider request is sent. Can replace the payload. */
@@ -1056,6 +1058,7 @@ export type ExtensionEvent =
 
 export interface ContextEventResult {
 	messages?: AgentMessage[];
+	items?: SessionContextItem[];
 }
 
 export type BeforeProviderRequestEventResult = unknown;
