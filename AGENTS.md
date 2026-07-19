@@ -9,6 +9,39 @@
 - When the user asks a question, answer it first before making edits or running implementation commands.
 - When responding to user feedback or an analysis, explicitly say whether you agree or disagree before saying what you changed.
 
+## Fork Profile Loader
+
+This repository is used as a fork with multiple branch intents.
+
+Before doing any substantial work:
+
+1. Detect current branch:
+   ```bash
+   git rev-parse --abbrev-ref HEAD
+   ```
+2. Read `AGENTS.FORK.md`.
+3. Then read exactly one profile file based on branch:
+   - `pg/core/*` -> `AGENTS.CORE_PR.md`
+   - `pg/ext/*`, `pg/private/*`, `pg/daily`, `dev/*` -> `AGENTS.EXTENSION.md`
+   - other branches -> default to `AGENTS.CORE_PR.md`
+4. Read `PI_MONO_WORKFLOW_PLAYBOOK.md` and follow it for branch flow (`main`/`pg/daily`/`pg/core`).
+5. If `PI_MONO_WORKFLOW_PLAYBOOK.md` conflicts with any `AGENTS*.md` rule, follow `AGENTS*.md`.
+6. If the user provides a dedicated worktree path for a task, do all work in that worktree.
+
+Fork baseline:
+- Treat `pg/daily` as the fork runtime/source-of-truth branch.
+- Treat `main` as upstream parity mirror only.
+- Create branches from the base that matches task intent:
+  - `pg/core/*` from `main`
+  - `pg/ext/*`, `pg/private/*`, `dev/*` from `pg/daily` by default
+
+Precedence:
+
+1. User request in current conversation
+2. `CONTRIBUTING.md` (for anything intended for upstream PR)
+3. Branch profile file above
+4. This `AGENTS.md`
+
 ## Code Quality
 
 - Read files in full before wide-ranging changes, before editing files you have not fully inspected, and when asked to investigate or audit. Do not rely on search snippets for broad changes.
@@ -26,7 +59,8 @@
 ## Commands
 
 - After code changes (not docs): `npm run check` (full output, no tail). Fix all errors, warnings, and infos before committing. Does not run tests.
-- Never run `npm run build` or `npm test` unless requested by the user.
+- Never run `npm run build` or `npm test` unless requested by the user or the active branch profile explicitly allows it (see `AGENTS.FORK.md` / `AGENTS.EXTENSION.md`).
+- On branches using `AGENTS.EXTENSION.md`, targeted tests for touched packages are expected as part of local validation.
 - Never run the full vitest suite directly: it includes e2e tests that activate when endpoint/auth env vars are present. For all non-e2e tests, run `./test.sh` from the repo root. Otherwise run specific tests from the package root: `node ../../node_modules/vitest/dist/cli.js --run test/specific.test.ts`.
 - If you create or modify a test file, run it and iterate on test or implementation until it passes.
 - For `packages/coding-agent/test/suite/`, use `test/suite/harness.ts` + the faux provider. No real provider APIs, keys, or paid tokens.
@@ -87,6 +121,16 @@ When posting issue/PR comments:
 When closing issues via commit:
 
 - Include `fixes #<number>` or `closes #<number>` in the message so merging auto-closes the issue. For multiple issues, repeat the keyword per issue (`closes #1, closes #2`); a shared keyword (`closes #1, #2`) only closes the first.
+
+## PR Workflow
+
+- Keep `main` as the read-only mirror of `upstream/main`.
+- For upstream candidates, branch from `main` into `pg/core/<topic>`.
+- For daily runtime usage, integrate finished work into `pg/daily`:
+  - `pg/core/*` changes via `cherry-pick`
+  - `pg/ext/*` / `pg/private/*` via `merge --no-ff` when you want the full feature history
+- Do not push directly to `upstream`.
+- Do not open PRs yourself unless the user explicitly asks.
 
 ## Testing pi Interactive Mode with tmux
 

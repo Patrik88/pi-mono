@@ -1,0 +1,29 @@
+#!/bin/sh
+
+REMOTE_NAME="$1"
+
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+
+# Safety: never push to upstream by accident unless explicitly overridden.
+if [ "$REMOTE_NAME" = "upstream" ] && [ "$ALLOW_UPSTREAM_PUSH" != "1" ]; then
+	echo "❌ Push blocked: refusing to push directly to 'upstream'."
+	echo "   Use origin, or re-run with ALLOW_UPSTREAM_PUSH=1 if intentional."
+	exit 1
+fi
+
+# PR-clean guard for upstream-candidate branches.
+case "$CURRENT_BRANCH" in
+pg/core/*|pr/*)
+	if git rev-parse --verify --quiet upstream/main >/dev/null; then
+		BANNED_FILES="$(git diff --name-only upstream/main...HEAD | rg '^(AGENTS\.md|AGENTS\..*\.md|CONTRIBUTING\.md|\.husky/|FORK_WORKFLOW\.md|PI_MONO_WORKFLOW_CHEAT_SHEET\.md|PI_MONO_WORKFLOW_PLAYBOOK\.md|PR-readiness-punch-list\.md)$')"
+		if [ -n "$BANNED_FILES" ]; then
+			echo "❌ Push blocked: branch '$CURRENT_BRANCH' includes fork/policy files not meant for upstream PRs:"
+			echo "$BANNED_FILES"
+			echo "   Move this work to pg/ext/* or pg/private/*, or drop these files from the PR branch."
+			exit 1
+		fi
+	fi
+	;;
+esac
+
+exit 0
