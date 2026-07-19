@@ -41,6 +41,12 @@ export function detectCapabilities(): TerminalCapabilities {
 	const termProgram = process.env.TERM_PROGRAM?.toLowerCase() || "";
 	const term = process.env.TERM?.toLowerCase() || "";
 	const colorTerm = process.env.COLORTERM?.toLowerCase() || "";
+	const trueColor =
+		colorTerm === "truecolor" || colorTerm === "24bit" || termProgram === "ghostty" || term.includes("ghostty");
+
+	if (process.env.PI_DISABLE_TERMINAL_IMAGES === "1" || process.env.PI_DISABLE_TERMINAL_IMAGES === "true") {
+		return { images: null, trueColor, hyperlinks: true };
+	}
 
 	// tmux and screen swallow OSC 8 by default (passthrough is opt-in and wraps
 	// sequences differently). Force hyperlinks off whenever we detect them, even
@@ -48,8 +54,16 @@ export function detectCapabilities(): TerminalCapabilities {
 	// also unreliable under tmux/screen, so leave `images: null` for safety.
 	const inTmuxOrScreen = !!process.env.TMUX || term.startsWith("tmux") || term.startsWith("screen");
 	if (inTmuxOrScreen) {
-		const trueColor = colorTerm === "truecolor" || colorTerm === "24bit";
 		return { images: null, trueColor, hyperlinks: false };
+	}
+
+	// cmux embeds Ghostty, but Kitty graphics sequences are not clipped/cleared
+	// reliably while Pi redraws scrollback. Disable inline images there and let
+	// callers render textual fallbacks instead of sticky terminal overlays.
+	const inCmux =
+		!!process.env.CMUX_SOCKET_PATH || !!process.env.CMUX_SHELL_INTEGRATION || !!process.env.CMUX_BUNDLE_ID;
+	if (inCmux) {
+		return { images: null, trueColor, hyperlinks: true };
 	}
 
 	if (process.env.KITTY_WINDOW_ID || termProgram === "kitty") {
@@ -80,7 +94,6 @@ export function detectCapabilities(): TerminalCapabilities {
 	// text" on terminals that swallow it, which means the URL disappears from
 	// the rendered output. Default to the legacy `text (url)` behavior unless we
 	// have positively identified a hyperlink-capable terminal above.
-	const trueColor = colorTerm === "truecolor" || colorTerm === "24bit";
 	return { images: null, trueColor, hyperlinks: false };
 }
 
