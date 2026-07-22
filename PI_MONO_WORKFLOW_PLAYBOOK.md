@@ -86,9 +86,12 @@ Refresh pg/ext/openai-native-web-search, then rebuild for runtime testing.
 Refresh pg/ext/openai-native-web-search, run a compatibility pass, then rebuild for runtime testing.
 ```
 
-## 3) Integrera klart arbete till pg/daily
+## 3) Commit och integrera klart arbete till pg/daily
 
-- Från `pg/core/*`: `cherry-pick` (ren PR-historik).
+- Agenter committar färdiga logiska ändringar efter obligatorisk validering utan att invänta en separat commit-begäran.
+- Arbetet görs i ett dedikerat topic-worktree; `pg/daily`-worktreet används för integration och verifiering.
+- Integrera först när hela uppgiften är klar.
+- Från `pg/core/*`: `cherry-pick` när ändringen ska in i daily-runtime (ren PR-historik).
 - Från `pg/ext/*` och `pg/private/*`: `merge --no-ff` (behåll feature-spår).
 
 Exempel:
@@ -114,15 +117,15 @@ Notera: byter du branch i samma worktree behöver du ofta bygga om innan test.
 
 ## 5) Worktree-mönster
 
-Du kan låta `/pi-mono` vara din default-worktree på `pg/daily`.  
-Lägg till extra worktrees bara för samtidiga topic-spår:
+Låt `/pi-mono` vara det stabila integrations-/runtime-worktreet på `pg/daily`. Vanliga feature-, fix-, docs-, config- och policyändringar görs i ett dedikerat topic-worktree, även när bara en agent arbetar:
 
 ```bash
 git worktree add ../pi-mono-pg-core-<topic> -b pg/core/<topic> main
 git worktree add ../pi-mono-pg-ext-<topic> -b pg/ext/<topic> pg/daily
+git worktree add ../pi-mono-pg-private-<topic> -b pg/private/<topic> pg/daily
 ```
 
-Valfritt: skapa en separat `pg/daily`-worktree bara om du vill låsa en stabil runtime-path för `npm link`.
+Committa och validera i topic-worktreet. När hela uppgiften är klar, integrera den via `cherry-pick` eller `merge --no-ff` enligt branchtypen och verifiera resultatet i det stabila worktreet.
 
 ## 6) PR-readiness (för pg/core/*)
 

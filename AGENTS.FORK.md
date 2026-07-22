@@ -100,21 +100,23 @@ Example:
   - `pg/private/<topic>`: create from `pg/daily` (default)
   - `dev/<topic>`: create from `pg/daily` unless user asks to spike from another branch
 - Use `main` as base for `pg/ext/*`/`pg/private/*` only when user explicitly asks for clean-slate isolation.
-- Integrate finished work into `pg/daily` for daily usage:
-  - `pg/core/*` -> prefer `git cherry-pick <commit>` (keep PR history clean)
-  - `pg/ext/*` / `pg/private/*` -> prefer `git merge --no-ff <branch>` (keep feature history intact)
+- Integrate completed, committed, and validated work into `pg/daily` only after the task is fully complete:
+  - `pg/core/*` -> use `git cherry-pick <commit>` when daily-runtime integration is intended (keep PR history clean)
+  - `pg/ext/*` / `pg/private/*` -> use `git merge --no-ff <branch>` (keep feature history intact)
 - Never commit directly on `main`.
 
 ## Worktree Guidance
 
-- Prefer one active task per worktree.
-- If parallel agents are working, use separate worktrees per branch/task to avoid accidental cross-edits.
+- Use one dedicated topic branch and worktree per mutating feature, fix, docs, configuration, or policy task.
+- Do not perform ordinary task mutations directly in the stable `main` or `pg/daily` worktree; reserve those worktrees for refresh, integration, release, and verification operations unless the user explicitly authorizes otherwise.
+- Commit completed validated work in the topic worktree, then integrate it into the intended stable branch only when the whole task is complete.
+- If parallel agents are working, each writer must use a separate branch/worktree unless the coordinator has explicitly approved a disjoint shared scope.
 - If the user gives an explicit worktree path, treat it as authoritative.
 - Keep branch/worktree mapping clear (for example `pg/ext/<topic>` -> `../pi-mono-pg-ext-<topic>`).
 - Do not remove/prune worktrees you did not create unless the user explicitly asks.
 - Remove temporary operation worktrees after the operation is complete (for example docs-only commits, isolated rebases, or clean cherry-picks).
 - Keep topic worktrees while the branch is still active, under review, or needed for runtime testing.
-- Before removing a worktree, confirm that no agent/process is still using it and that any needed commit/rebase/cherry-pick has been verified.
+- Before removing a worktree, confirm that no agent/process is still using it and that the required commit and merge/cherry-pick have been verified.
 
 ## Handover Files
 

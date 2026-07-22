@@ -46,7 +46,7 @@ Recommended order for cross-package consistency:
 
 - Fork-local documentation and guardrails are welcome here.
 - If the user later wants upstream PR, create/switch to `pg/core/*` and strip fork-only files from the PR diff.
-- `pg/daily` is the integration/runtime branch; prefer:
-  - `git cherry-pick` from `pg/core/*`
-  - `git merge --no-ff` from `pg/ext/*` and `pg/private/*`
-- Prefer separate worktrees for concurrent extension/private tasks.
+- `pg/daily` is the integration/runtime branch:
+  - use `git cherry-pick` from `pg/core/*` when daily-runtime integration is intended
+  - use `git merge --no-ff` from completed `pg/ext/*` and `pg/private/*` branches
+- Perform mutating extension/private/docs/config/policy tasks in dedicated topic worktrees, commit after required validation, and merge into `pg/daily` only when the complete task is ready.
