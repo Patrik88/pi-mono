@@ -27,6 +27,7 @@ Before doing any substantial work:
 4. Read `PI_MONO_WORKFLOW_PLAYBOOK.md` and follow it for branch flow (`main`/`pg/daily`/`pg/core`).
 5. If `PI_MONO_WORKFLOW_PLAYBOOK.md` conflicts with any `AGENTS*.md` rule, follow `AGENTS*.md`.
 6. If the user provides a dedicated worktree path for a task, do all work in that worktree.
+7. For mutating feature, fix, docs, configuration, or policy work, create or use a dedicated topic branch and worktree before the first mutation. Keep the stable `main` and `pg/daily` worktrees for refresh, integration, release, and verification operations unless the user explicitly authorizes direct work there.
 
 Fork baseline:
 - Treat `pg/daily` as the fork runtime/source-of-truth branch.
@@ -66,7 +67,7 @@ Precedence:
 - For `packages/coding-agent/test/suite/`, use `test/suite/harness.ts` + the faux provider. No real provider APIs, keys, or paid tokens.
 - Put issue-specific regressions under `packages/coding-agent/test/suite/regressions/` named `<issue-number>-<short-slug>.test.ts`.
 - For ad-hoc scripts, `write` them to a temp file (e.g. `/tmp`), run, edit if needed, remove when done. Don't embed multi-line scripts in `bash` commands.
-- Never commit unless the user asks.
+- Commit each completed logical change after its required validation without waiting for a separate user request. Do not commit broken, incomplete, or unrelated work.
 
 ## Dependency and Install Security
 
@@ -82,6 +83,7 @@ Multiple pi sessions may be running in this cwd at the same time, each modifying
 
 Committing:
 
+- Work on a dedicated topic branch/worktree, commit completed validated work there, then integrate it according to the active fork profile only after the task is fully complete.
 - Only commit files YOU changed in THIS session.
 - Stage explicit paths (`git add <path1> <path2>`); never `git add -A` / `git add .`.
 - Before committing, run `git status` and verify you are only staging your files.
