@@ -52,6 +52,8 @@ export { createEventBus, type EventBus, type EventBusController } from "./core/e
 export type {
 	ActiveCommandSelection,
 	AgentEndEvent,
+	AgentPauseState,
+	AgentPauseStatus,
 	AgentSettledEvent,
 	AgentStartEvent,
 	AgentToolResult,

@@ -64,6 +64,7 @@ import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.ts";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
 import {
+	type AgentPauseStatus,
 	type ContextUsage,
 	type ExtensionCommandContextActions,
 	type ExtensionErrorListener,
@@ -269,6 +270,11 @@ interface ToolDefinitionEntry {
 	sourceInfo: SourceInfo;
 }
 
+interface PausedContinuation {
+	sessionId: string;
+	leafId: string | null;
+}
+
 function estimateMessagesTokens(messages: AgentMessage[]): number {
 	let tokens = 0;
 	for (const message of messages) {
@@ -301,6 +307,9 @@ export class AgentSession {
 	private _isAgentRunActive = false;
 	private _idleWaitPromise: Promise<void> | undefined;
 	private _resolveIdleWait: (() => void) | undefined;
+	private _pauseRequested = false;
+	private _pausedContinuation: PausedContinuation | undefined;
+	private _lastTurnHasMoreToolCalls = false;
 
 	/** Tracks pending steering messages for UI display. Removed when delivered. */
 	private _steeringMessages: string[] = [];
@@ -386,6 +395,7 @@ export class AgentSession {
 		this._unsubscribeAgent = this.agent.subscribe(this._handleAgentEvent);
 		this._installAgentToolHooks();
 		this._installAgentNextTurnRefresh();
+		this._installAgentPauseControl();
 
 		this._buildRuntime({
 			activeToolNames: this._initialActiveToolNames,
@@ -505,6 +515,19 @@ export class AgentSession {
 				details: hookResult.details,
 				isError: hookResult.isError ?? isError,
 			};
+		};
+	}
+
+	private _installAgentPauseControl(): void {
+		const previousShouldStopAfterTurn = this.agent.shouldStopAfterTurn;
+		this.agent.shouldStopAfterTurn = async (turn, signal) => {
+			this._lastTurnHasMoreToolCalls = turn.hasMoreToolCalls;
+			if (await previousShouldStopAfterTurn?.(turn, signal)) {
+				this._pauseRequested = false;
+				return true;
+			}
+			if (!this._pauseRequested) return false;
+			return turn.hasMoreToolCalls || this.agent.hasQueuedMessages();
 		};
 	}
 
@@ -835,6 +858,9 @@ export class AgentSession {
 	 * Call this when completely done with the session.
 	 */
 	dispose(): void {
+		this._pauseRequested = false;
+		this._pausedContinuation = undefined;
+		this._lastTurnHasMoreToolCalls = false;
 		try {
 			this.abortRetry();
 			this.abortCompaction();
@@ -1172,10 +1198,33 @@ export class AgentSession {
 	// =========================================================================
 
 	private async _runAgentPrompt(messages: AgentMessage | AgentMessage[]): Promise<void> {
+		await this._runAgentOperation(() => this.agent.prompt(messages));
+	}
+
+	private async _runAgentContinuation(): Promise<void> {
+		await this._runAgentOperation(() => this.agent.continue());
+	}
+
+	private async _runAgentOperation(start: () => Promise<void>): Promise<void> {
 		this._isAgentRunActive = true;
 		try {
-			await this.agent.prompt(messages);
-			while (await this._handlePostAgentRun()) {
+			this._lastTurnHasMoreToolCalls = false;
+			await start();
+			while (true) {
+				if (this._pauseRequested && (this._lastTurnHasMoreToolCalls || this.agent.hasQueuedMessages())) {
+					this._capturePausedContinuation();
+					break;
+				}
+
+				const shouldContinue = await this._handlePostAgentRun();
+				if (this._pauseRequested) {
+					if (shouldContinue) this._capturePausedContinuation();
+					else this._pauseRequested = false;
+					break;
+				}
+				if (!shouldContinue) break;
+
+				this._lastTurnHasMoreToolCalls = false;
 				await this.agent.continue();
 			}
 		} finally {
@@ -1183,6 +1232,14 @@ export class AgentSession {
 			this._flushPendingBashMessages();
 			await this._emitAgentSettled();
 		}
+	}
+
+	private _capturePausedContinuation(): void {
+		this._pauseRequested = false;
+		this._pausedContinuation = {
+			sessionId: this.sessionId,
+			leafId: this.sessionManager.getLeafId(),
+		};
 	}
 
 	private async _handlePostAgentRun(): Promise<boolean> {
@@ -1374,6 +1431,8 @@ export class AgentSession {
 		}
 
 		preflightResult?.(true);
+		this._pauseRequested = false;
+		this._pausedContinuation = undefined;
 		await this._runAgentPrompt(messages);
 	}
 
@@ -1695,6 +1754,68 @@ export class AgentSession {
 			return;
 		}
 		await this._getIdleWaitPromise();
+	}
+
+	getPauseStatus(): AgentPauseStatus {
+		if (this._pauseRequested) {
+			return { supported: true, state: "pause_requested", resumable: false };
+		}
+
+		const paused = this._pausedContinuation;
+		if (paused) {
+			if (paused.sessionId !== this.sessionId) {
+				return { supported: true, state: "paused", resumable: false, staleReason: "session" };
+			}
+			if (paused.leafId !== this.sessionManager.getLeafId()) {
+				return { supported: true, state: "paused", resumable: false, staleReason: "branch" };
+			}
+			return { supported: true, state: "paused", resumable: this.isIdle };
+		}
+
+		return {
+			supported: true,
+			state: this.isStreaming ? "running" : "idle",
+			resumable: false,
+		};
+	}
+
+	requestPause(): AgentPauseStatus {
+		if (this._pausedContinuation || this._pauseRequested || !this.isStreaming) {
+			return this.getPauseStatus();
+		}
+		this._pauseRequested = true;
+		return this.getPauseStatus();
+	}
+
+	cancelPauseRequest(): AgentPauseStatus {
+		this._pauseRequested = false;
+		return this.getPauseStatus();
+	}
+
+	async resumePausedRun(): Promise<AgentPauseStatus> {
+		const status = this.getPauseStatus();
+		if (status.state !== "paused") {
+			throw new Error("No paused agent run is available to continue.");
+		}
+		if (status.staleReason === "session") {
+			throw new Error("The paused run belongs to a different session and cannot be continued.");
+		}
+		if (status.staleReason === "branch") {
+			throw new Error("The session branch changed after the pause; the paused run cannot be continued.");
+		}
+		if (!status.resumable) {
+			throw new Error("The paused agent run is not ready to continue.");
+		}
+
+		const pausedContinuation = this._pausedContinuation;
+		this._pausedContinuation = undefined;
+		try {
+			await this._runAgentContinuation();
+		} catch (error) {
+			this._pausedContinuation ??= pausedContinuation;
+			throw error;
+		}
+		return this.getPauseStatus();
 	}
 
 	// =========================================================================
@@ -2541,6 +2662,10 @@ export class AgentSession {
 					}
 					void this.abort();
 				},
+				getPauseStatus: () => this.getPauseStatus(),
+				requestPause: () => this.requestPause(),
+				cancelPauseRequest: () => this.cancelPauseRequest(),
+				resumePausedRun: () => this.resumePausedRun(),
 				hasPendingMessages: () => this.pendingMessageCount > 0,
 				shutdown: () => {
 					this._extensionShutdownHandler?.();
