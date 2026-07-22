@@ -1,0 +1,139 @@
+{
+  "proposalType": "task_import",
+  "basePlanMissing": true,
+  "title": "Initialize Pi Mono tool display work",
+  "objective": "Create the first Pi Mono task plan and track implementation of transparent, low-density tool call/result display modes.",
+  "operations": [
+    {
+      "op": "initPlan",
+      "plan": {
+        "version": 1,
+        "id": "pi-mono",
+        "title": "Pi Mono",
+        "objective": "Track implementation work for Patrik's Pi Mono fork.",
+        "tasks": []
+      }
+    },
+    {
+      "op": "addTask",
+      "task": {
+        "id": "T001",
+        "title": "Implement transparent minimal/full tool call and result display modes",
+        "status": "todo",
+        "readiness": "ready",
+        "role": "worker",
+        "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+        "gitRepo": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+        "rationale": "Tool calls currently hide exact model-supplied arguments for extension tools and compact tool results consume too much vertical space. Implement the approved design in the Pi core TUI.",
+        "sourceRefs": [
+          {
+            "type": "design-spec",
+            "path": "packages/coding-agent/docs/tool-display-modes.md",
+            "reason": "Approved tool display behavior and compatibility contract."
+          }
+        ],
+        "requiredReferences": [
+          {
+            "path": "packages/coding-agent/docs/tool-display-modes.md",
+            "reason": "Approved behavior, compatibility, interaction, and acceptance contract.",
+            "embed": true
+          }
+        ],
+        "suggestedReferences": [
+          {
+            "path": "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+            "reason": "Primary tool execution renderer.",
+            "embed": false
+          },
+          {
+            "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+            "reason": "Global display state and keybinding dispatch.",
+            "embed": false
+          },
+          {
+            "path": "packages/coding-agent/src/core/settings-manager.ts",
+            "reason": "Persistent display defaults.",
+            "embed": false
+          },
+          {
+            "path": "packages/coding-agent/src/core/keybindings.ts",
+            "reason": "Configurable tool display actions.",
+            "embed": false
+          },
+          {
+            "path": "packages/coding-agent/src/core/extensions/types.ts",
+            "reason": "Renderer and extension compatibility contracts.",
+            "embed": false
+          }
+        ],
+        "likelyFiles": [
+          "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+          "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+          "packages/coding-agent/src/core/settings-manager.ts",
+          "packages/coding-agent/src/core/keybindings.ts",
+          "packages/coding-agent/src/core/extensions/types.ts",
+          "packages/coding-agent/docs/settings.md",
+          "packages/coding-agent/docs/keybindings.md",
+          "packages/coding-agent/test"
+        ],
+        "readBudget": {
+          "mode": "focused",
+          "maxExtraReadFilesBeforeEditing": 8,
+          "guidance": "Use the embedded spec as the contract. Inspect only the current rendering, settings, and keybinding implementations needed for the change."
+        },
+        "acceptanceCriteria": [
+          "Tool calls support minimal and full display modes, with minimal as the default.",
+          "Minimal tool calls expose actual model-supplied top-level argument names and values in at most one visual terminal row, with visible truncation or omission markers.",
+          "Tool results support minimal, compact, and full modes, with minimal as the default and inline with the call when possible.",
+          "Minimal tool execution rendering bypasses the current mandatory spacer and vertical box padding.",
+          "Compact and full modes preserve existing specialized renderers and backward compatibility for expanded:boolean and setToolsExpanded(boolean).",
+          "Call and result modes are independently configurable and controllable through configurable keybindings.",
+          "Session JSONL, model-visible context, and ToolOutputPolicy semantics remain unchanged.",
+          "Focused rendering tests and npm run check pass; runtime-impact changes are documented."
+        ],
+        "validation": [
+          {
+            "kind": "command",
+            "command": "npm run check",
+            "cwd": "{repo}",
+            "timeoutSeconds": 600,
+            "required": true,
+            "noninteractive": true
+          }
+        ],
+        "notes": "Implement in the dedicated pg/private/tool-display-modes worktree. Commit completed validated work, then merge --no-ff into pg/daily only after the full task is complete."
+      }
+    }
+  ],
+  "version": 1,
+  "proposalId": "P001",
+  "createdAt": "2026-07-22T14:16:05.380Z",
+  "createdBy": "agent",
+  "targetPlanPath": ".pi/tasks.json",
+  "basePlan": {},
+  "sourceRefs": [],
+  "assumptions": [],
+  "openQuestions": [],
+  "warnings": [],
+  "decisionItems": [],
+  "lifecycle": {
+    "status": "archived",
+    "updatedAt": "2026-07-22T14:16:20.061Z",
+    "updatedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+    "appliedAt": "2026-07-22T14:16:20.053Z",
+    "appliedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+    "archivedAt": "2026-07-22T14:16:20.061Z",
+    "archivedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+    "reason": "Archived after successful apply"
+  },
+  "review": {
+    "status": "archived",
+    "appliedAt": "2026-07-22T14:16:20.053Z",
+    "appliedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+    "targetPlanPath": ".pi/tasks.json",
+    "operationSummaries": [
+      "initPlan pi-mono - Pi Mono",
+      "addTask T001 - Implement transparent minimal/full tool call and result display modes"
+    ]
+  }
+}

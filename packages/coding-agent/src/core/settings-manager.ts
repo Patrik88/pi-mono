@@ -7,6 +7,12 @@ import lockfile from "proper-lockfile";
 import { CONFIG_DIR_NAME, getAgentDir } from "../config.ts";
 import { normalizePath, resolvePath } from "../utils/paths.ts";
 import { DEFAULT_HTTP_IDLE_TIMEOUT_MS, parseHttpIdleTimeoutMs } from "./http-dispatcher.ts";
+import {
+	normalizeToolCallDisplayMode,
+	normalizeToolResultDisplayMode,
+	type ToolCallDisplayMode,
+	type ToolResultDisplayMode,
+} from "./tools/display-modes.ts";
 
 export interface CompactionSettings {
 	enabled?: boolean; // default: true
@@ -59,6 +65,11 @@ export interface WarningSettings {
 	anthropicExtraUsage?: boolean; // default: true
 }
 
+export interface ToolDisplaySettings {
+	call?: ToolCallDisplayMode; // default: "minimal"
+	result?: ToolResultDisplayMode; // default: "minimal"
+}
+
 export type DefaultProjectTrust = "ask" | "always" | "never";
 
 export type TransportSetting = Transport;
@@ -93,6 +104,7 @@ export interface Settings {
 	branchSummary?: BranchSummarySettings;
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
+	toolDisplay?: ToolDisplaySettings;
 	showCacheMissNotices?: boolean; // default: false - show transcript notices for significant prompt-cache misses
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
@@ -845,6 +857,14 @@ export class SettingsManager {
 
 	getHideThinkingBlock(): boolean {
 		return this.settings.hideThinkingBlock ?? false;
+	}
+
+	getToolCallDisplayMode(): ToolCallDisplayMode {
+		return normalizeToolCallDisplayMode(this.settings.toolDisplay?.call);
+	}
+
+	getToolResultDisplayMode(): ToolResultDisplayMode {
+		return normalizeToolResultDisplayMode(this.settings.toolDisplay?.result);
 	}
 
 	getShowCacheMissNotices(): boolean {

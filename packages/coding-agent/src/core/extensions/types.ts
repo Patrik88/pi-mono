@@ -68,6 +68,7 @@ import type { ActiveCommandSelection, SlashCommandInfo } from "../slash-commands
 import type { SourceInfo } from "../source-info.ts";
 import type { BuildSystemPromptOptions } from "../system-prompt.ts";
 import type { BashOperations } from "../tools/bash.ts";
+import type { ToolCallDisplayMode, ToolResultDisplayMode } from "../tools/display-modes.ts";
 import type { EditToolDetails } from "../tools/edit.ts";
 import type {
 	BashToolDetails,
@@ -428,10 +429,14 @@ export interface ReplacedSessionContext extends ExtensionCommandContext {
 // Tool Types
 // ============================================================================
 
+export type { ToolCallDisplayMode, ToolResultDisplayMode } from "../tools/display-modes.ts";
+
 /** Rendering options for tool results */
 export interface ToolRenderResultOptions {
-	/** Whether the result view is expanded */
+	/** Whether the result view is fully expanded. Preserved for compatibility. */
 	expanded: boolean;
+	/** Active result display mode. Minimal mode bypasses custom result renderers. */
+	displayMode: ToolResultDisplayMode;
 	/** Whether this is a partial/streaming result */
 	isPartial: boolean;
 }
@@ -456,8 +461,12 @@ export interface ToolRenderContext<TState = any, TArgs = any> {
 	argsComplete: boolean;
 	/** Whether the tool result is partial/streaming. */
 	isPartial: boolean;
-	/** Whether the result view is expanded. */
+	/** Whether the result view is fully expanded. Preserved for compatibility. */
 	expanded: boolean;
+	/** Active call display mode. */
+	callDisplayMode: ToolCallDisplayMode;
+	/** Active result display mode. Minimal mode bypasses custom result renderers. */
+	resultDisplayMode: ToolResultDisplayMode;
 	/** Whether inline images are currently shown in the TUI. */
 	showImages: boolean;
 	/** Whether the current result is an error. */
