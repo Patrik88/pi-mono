@@ -630,6 +630,57 @@ describe("Agent", () => {
 		expect(responseCount).toBe(2);
 	});
 
+	it("forwards shouldStopAfterTurn and leaves a resumable tool-result tail", async () => {
+		const schema = Type.Object({});
+		const tool: AgentTool<typeof schema> = {
+			name: "noop",
+			label: "Noop",
+			description: "Noop tool",
+			parameters: schema,
+			execute: async () => ({ content: [{ type: "text", text: "ok" }], details: {} }),
+		};
+		let requestCount = 0;
+		let stopChecks = 0;
+		let sawAbortSignal = false;
+		const agent = new Agent({
+			initialState: { tools: [tool] },
+			shouldStopAfterTurn: async ({ toolResults }, signal) => {
+				stopChecks++;
+				sawAbortSignal = signal instanceof AbortSignal;
+				return toolResults.length > 0;
+			},
+			streamFn: () => {
+				requestCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					if (requestCount === 1) {
+						stream.push({
+							type: "done",
+							reason: "toolUse",
+							message: createAssistantToolUseMessage([
+								{ type: "toolCall", id: "tool-1", name: "noop", arguments: {} },
+							]),
+						});
+						return;
+					}
+					stream.push({ type: "done", reason: "stop", message: createAssistantMessage("done") });
+				});
+				return stream;
+			},
+		});
+
+		await agent.prompt("start");
+
+		expect(requestCount).toBe(1);
+		expect(stopChecks).toBe(1);
+		expect(sawAbortSignal).toBe(true);
+		expect(agent.state.messages[agent.state.messages.length - 1]?.role).toBe("toolResult");
+
+		agent.shouldStopAfterTurn = undefined;
+		await agent.continue();
+		expect(requestCount).toBe(2);
+	});
+
 	it("keeps legacy prepareNextTurn signal callback behavior", async () => {
 		const schema = Type.Object({});
 		const tool: AgentTool<typeof schema> = {

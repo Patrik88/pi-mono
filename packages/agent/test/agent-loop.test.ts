@@ -987,6 +987,7 @@ describe("agentLoop with AgentMessage", () => {
 			tools: [tool],
 		};
 		let convertedSecondTurnSystemPrompt = "";
+		const stopContextSystemPrompts: string[] = [];
 		let prepared = false;
 		const config: AgentLoopConfig = {
 			model: createModel(),
@@ -1001,6 +1002,10 @@ describe("agentLoop with AgentMessage", () => {
 						tools: currentContext.tools,
 					},
 				};
+			},
+			shouldStopAfterTurn: async ({ context: stopContext }) => {
+				stopContextSystemPrompts.push(stopContext.systemPrompt);
+				return false;
 			},
 		};
 
@@ -1038,6 +1043,7 @@ describe("agentLoop with AgentMessage", () => {
 
 		expect(llmCalls).toBe(2);
 		expect(convertedSecondTurnSystemPrompt).toBe("second prompt");
+		expect(stopContextSystemPrompts[0]).toBe("second prompt");
 	});
 
 	it("should stop after the current turn when shouldStopAfterTurn returns true", async () => {
@@ -1067,6 +1073,7 @@ describe("agentLoop with AgentMessage", () => {
 		let followUpPolls = 0;
 		let callbackToolResultIds: string[] = [];
 		let callbackContextRoles: string[] = [];
+		let callbackHasMoreToolCalls = false;
 		const config: AgentLoopConfig = {
 			model: createModel(),
 			convertToLlm: identityConverter,
@@ -1078,10 +1085,11 @@ describe("agentLoop with AgentMessage", () => {
 				followUpPolls++;
 				return [createUserMessage("follow up should stay queued")];
 			},
-			shouldStopAfterTurn: async ({ message, toolResults, context }) => {
+			shouldStopAfterTurn: async ({ message, toolResults, hasMoreToolCalls, context }) => {
 				expect(message.role).toBe("assistant");
 				callbackToolResultIds = toolResults.map((toolResult) => toolResult.toolCallId);
 				callbackContextRoles = context.messages.map((contextMessage) => contextMessage.role);
+				callbackHasMoreToolCalls = hasMoreToolCalls;
 				return true;
 			},
 		};
@@ -1120,6 +1128,7 @@ describe("agentLoop with AgentMessage", () => {
 		expect(followUpPolls).toBe(0);
 		expect(callbackToolResultIds).toEqual(["tool-1"]);
 		expect(callbackContextRoles).toEqual(["user", "assistant", "toolResult"]);
+		expect(callbackHasMoreToolCalls).toBe(true);
 		expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "toolResult"]);
 		expect(events.map((event) => event.type)).toEqual([
 			"agent_start",

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `Agent.shouldStopAfterTurn` support, including `hasMoreToolCalls` continuation disposition, and `Agent.continueFromQueuedMessages()` for queue-first continuation after terminal tool batches.
+
 ## [0.80.10] - 2026-07-16
 
 ## [0.80.9] - 2026-07-16

@@ -13,6 +13,7 @@ import type { SessionContextItem, SessionManager } from "../session-manager.ts";
 import type { BuildSystemPromptOptions } from "../system-prompt.ts";
 
 import type {
+	AgentPauseStatus,
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
 	BeforeProviderHeadersEvent,
@@ -231,6 +232,12 @@ export async function emitProjectTrustEvent(
 	return { errors };
 }
 
+const unsupportedPauseStatus = (): AgentPauseStatus => ({
+	supported: false,
+	state: "idle",
+	resumable: false,
+});
+
 const noOpUIContext: ExtensionUIContext = {
 	select: async () => undefined,
 	confirm: async () => false,
@@ -282,6 +289,12 @@ export class ExtensionRunner {
 	private getSignalFn: () => AbortSignal | undefined = () => undefined;
 	private waitForIdleFn: () => Promise<void> = async () => {};
 	private abortFn: () => void = () => {};
+	private getPauseStatusFn: () => AgentPauseStatus = unsupportedPauseStatus;
+	private requestPauseFn: () => AgentPauseStatus = unsupportedPauseStatus;
+	private cancelPauseRequestFn: () => AgentPauseStatus = unsupportedPauseStatus;
+	private resumePausedRunFn: () => Promise<AgentPauseStatus> = async () => {
+		throw new Error("Cooperative pause is not supported by this runtime.");
+	};
 	private hasPendingMessagesFn: () => boolean = () => false;
 	private getContextUsageFn: () => ContextUsage | undefined = () => undefined;
 	private compactFn: (options?: CompactOptions) => void = () => {};
@@ -350,6 +363,14 @@ export class ExtensionRunner {
 		this.isProjectTrustedFn = contextActions.isProjectTrusted;
 		this.getSignalFn = contextActions.getSignal;
 		this.abortFn = contextActions.abort;
+		this.getPauseStatusFn = contextActions.getPauseStatus ?? unsupportedPauseStatus;
+		this.requestPauseFn = contextActions.requestPause ?? unsupportedPauseStatus;
+		this.cancelPauseRequestFn = contextActions.cancelPauseRequest ?? unsupportedPauseStatus;
+		this.resumePausedRunFn =
+			contextActions.resumePausedRun ??
+			(async () => {
+				throw new Error("Cooperative pause is not supported by this runtime.");
+			});
 		this.hasPendingMessagesFn = contextActions.hasPendingMessages;
 		this.shutdownHandler = contextActions.shutdown;
 		this.getContextUsageFn = contextActions.getContextUsage;
@@ -728,6 +749,22 @@ export class ExtensionRunner {
 			abort: () => {
 				runner.assertActive();
 				runner.abortFn();
+			},
+			getPauseStatus: () => {
+				runner.assertActive();
+				return runner.getPauseStatusFn();
+			},
+			requestPause: () => {
+				runner.assertActive();
+				return runner.requestPauseFn();
+			},
+			cancelPauseRequest: () => {
+				runner.assertActive();
+				return runner.cancelPauseRequestFn();
+			},
+			resumePausedRun: () => {
+				runner.assertActive();
+				return runner.resumePausedRunFn();
 			},
 			hasPendingMessages: () => {
 				runner.assertActive();
