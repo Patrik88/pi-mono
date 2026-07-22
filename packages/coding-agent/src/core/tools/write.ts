@@ -240,7 +240,7 @@ export function createWriteToolDefinition(
 			component.setText(
 				formatWriteCall(
 					renderArgs,
-					{ expanded: context.expanded, isPartial: context.isPartial },
+					{ expanded: context.expanded, displayMode: context.resultDisplayMode, isPartial: context.isPartial },
 					theme,
 					component.cache,
 					context.cwd,

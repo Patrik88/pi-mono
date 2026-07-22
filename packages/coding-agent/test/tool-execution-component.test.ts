@@ -1,5 +1,5 @@
 import { join, resolve } from "node:path";
-import { Text, type TUI } from "@earendil-works/pi-tui";
+import { Text, type TUI, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { beforeAll, describe, expect, test } from "vitest";
 import { getReadmePath } from "../src/config.ts";
@@ -35,7 +35,7 @@ describe("ToolExecutionComponent parity", () => {
 		initTheme("dark");
 	});
 
-	test("stacks custom call and result renderers like the old implementation", () => {
+	test("uses the generic call renderer while preserving custom result renderers", () => {
 		const toolDefinition: ToolDefinition = {
 			...createBaseToolDefinition(),
 			renderCall: () => new Text("custom call", 0, 0),
@@ -51,7 +51,9 @@ describe("ToolExecutionComponent parity", () => {
 			createFakeTui(),
 			process.cwd(),
 		);
-		expect(stripAnsi(component.render(120).join("\n"))).toContain("custom call");
+		const callOnly = stripAnsi(component.render(120).join("\n"));
+		expect(callOnly).toContain("custom_tool()");
+		expect(callOnly).not.toContain("custom call");
 
 		component.updateResult(
 			{
@@ -63,11 +65,12 @@ describe("ToolExecutionComponent parity", () => {
 		);
 
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("custom call");
+		expect(rendered).toContain("custom_tool()");
+		expect(rendered).not.toContain("custom call");
 		expect(rendered).toContain("custom result");
 	});
 
-	test("self-rendered empty tool rows take no layout space", () => {
+	test("keeps generic calls visible when self-rendered slots are empty", () => {
 		const toolDefinition: ToolDefinition = {
 			...createBaseToolDefinition(),
 			renderShell: "self",
@@ -84,7 +87,7 @@ describe("ToolExecutionComponent parity", () => {
 			createFakeTui(),
 			process.cwd(),
 		);
-		expect(component.render(120)).toEqual([]);
+		expect(stripAnsi(component.render(120).join("\n"))).toContain("custom_tool()");
 
 		component.updateResult(
 			{
@@ -95,7 +98,62 @@ describe("ToolExecutionComponent parity", () => {
 			false,
 		);
 
-		expect(component.render(120)).toEqual([]);
+		expect(stripAnsi(component.render(120).join("\n"))).toContain("custom_tool()");
+	});
+
+	test("renders minimal calls and results in one row with explicit arguments", () => {
+		const component = new ToolExecutionComponent(
+			"read",
+			"tool-minimal-read",
+			{ path: "notes.txt", offset: 1, limit: 280 },
+			{ resultDisplayMode: "minimal" },
+			createReadToolDefinition(process.cwd()),
+			createFakeTui(),
+			process.cwd(),
+		);
+
+		let lines = component.render(120);
+		expect(lines).toHaveLength(1);
+		expect(stripAnsi(lines[0])).toContain('read(path="notes.txt", offset=1, limit=280)');
+
+		component.updateResult(
+			{ content: [{ type: "text", text: "one\ntwo\nthree" }], details: undefined, isError: false },
+			false,
+		);
+		lines = component.render(120);
+		expect(lines).toHaveLength(1);
+		expect(stripAnsi(lines[0])).toContain("✓ 3 lines · 13 B");
+	});
+
+	test("visibly truncates minimal calls to the terminal width", () => {
+		const component = new ToolExecutionComponent(
+			"bash",
+			"tool-minimal-width",
+			{ command: `echo ${"long-value-".repeat(30)}`, timeout: 20 },
+			{ resultDisplayMode: "minimal" },
+			undefined,
+			createFakeTui(),
+			process.cwd(),
+		);
+		const lines = component.render(60);
+		expect(lines).toHaveLength(1);
+		expect(visibleWidth(lines[0])).toBeLessThanOrEqual(60);
+		expect(stripAnsi(lines[0])).toContain("…");
+	});
+
+	test("renders full call arguments without expanding minimal results", () => {
+		const component = new ToolExecutionComponent(
+			"read",
+			"tool-full-call",
+			{ path: "notes.txt", offset: 1, limit: 280 },
+			{ callDisplayMode: "full", resultDisplayMode: "minimal" },
+			createReadToolDefinition(process.cwd()),
+			createFakeTui(),
+			process.cwd(),
+		);
+		const rendered = stripAnsi(component.render(120).join("\n"));
+		expect(rendered).toContain('"offset": 1');
+		expect(rendered).toContain('"limit": 280');
 	});
 
 	test("uses built-in rendering for built-in overrides without custom renderers", () => {
@@ -224,7 +282,8 @@ describe("ToolExecutionComponent parity", () => {
 		component.updateResult({ content: [{ type: "text", text: "hello" }], details: undefined, isError: false }, false);
 		component.setExpanded(true);
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("override call");
+		expect(rendered).toContain('read(path="notes.txt")');
+		expect(rendered).not.toContain("override call");
 		expect(rendered).toContain("hello");
 	});
 
@@ -267,9 +326,9 @@ describe("ToolExecutionComponent parity", () => {
 		);
 		component.updateResult({ content: [{ type: "text", text: "hello" }], details: undefined, isError: false }, false);
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("override call");
+		expect(rendered).toContain('read(path="README.md")');
+		expect(rendered).not.toContain("override call");
 		expect(rendered).toContain("override result");
-		expect(rendered).not.toContain("read README.md");
 	});
 
 	test("uses custom renderers for built-in overrides that reuse wrapped built-in tool parameters", () => {
@@ -290,7 +349,8 @@ describe("ToolExecutionComponent parity", () => {
 		);
 		component.updateResult({ content: [{ type: "text", text: "hello" }], details: undefined, isError: false }, false);
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("wrapped override call");
+		expect(rendered).toContain('read(path="README.md")');
+		expect(rendered).not.toContain("wrapped override call");
 		expect(rendered).toContain("wrapped override result");
 	});
 
@@ -318,7 +378,8 @@ describe("ToolExecutionComponent parity", () => {
 		);
 		component.updateResult({ content: [{ type: "text", text: "done" }], details: {}, isError: false }, false);
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("custom call shared-token");
+		expect(rendered).toContain("custom_tool()");
+		expect(rendered).not.toContain("custom call shared-token");
 		expect(rendered).toContain("custom result shared-token");
 	});
 
@@ -449,7 +510,6 @@ describe("ToolExecutionComponent parity", () => {
 			title: "SKILL.md",
 			path: join(process.cwd(), "attio", "SKILL.md"),
 			content: "---\nname: attio\ndescription: CRM helper\n---\n\n# Hidden skill instructions",
-			compact: "[skill] attio",
 			hidden: "Hidden skill instructions",
 			absent: "read skill attio",
 		},
@@ -457,7 +517,6 @@ describe("ToolExecutionComponent parity", () => {
 			title: "AGENTS.md",
 			path: join(process.cwd(), ".pi", "AGENTS.md"),
 			content: "Hidden resource instructions",
-			compact: "read resource .pi/AGENTS.md",
 			hidden: "Hidden resource instructions",
 			absent: undefined,
 		},
@@ -465,7 +524,6 @@ describe("ToolExecutionComponent parity", () => {
 			title: "outside AGENTS.md",
 			path: resolve(process.cwd(), "..", "AGENTS.md"),
 			content: "Hidden outside resource instructions",
-			compact: `read resource ${resolve(process.cwd(), "..", "AGENTS.md").replace(/\\/g, "/")}`,
 			hidden: "Hidden outside resource instructions",
 			absent: undefined,
 		},
@@ -473,7 +531,6 @@ describe("ToolExecutionComponent parity", () => {
 			title: "Pi documentation",
 			path: getReadmePath(),
 			content: "Hidden docs content",
-			compact: "read docs README.md",
 			hidden: "Hidden docs content",
 			absent: undefined,
 		},
@@ -493,8 +550,8 @@ describe("ToolExecutionComponent parity", () => {
 				false,
 			);
 
-			const collapsed = stripAnsi(component.render(120).join("\n"));
-			expect(collapsed).toContain(scenario.compact);
+			const collapsed = stripAnsi(component.render(240).join("\n"));
+			expect(collapsed).toContain(`read(path=${JSON.stringify(scenario.path)})`);
 			expect(collapsed).not.toContain(scenario.hidden);
 			if (scenario.absent) {
 				expect(collapsed).not.toContain(scenario.absent);
@@ -507,10 +564,10 @@ describe("ToolExecutionComponent parity", () => {
 	}
 
 	for (const scenario of [
-		{ title: "SKILL.md", path: join(process.cwd(), "attio", "SKILL.md"), compact: "[skill] attio:120-329" },
-		{ title: "Pi documentation", path: getReadmePath(), compact: "read docs README.md:120-329" },
+		{ title: "SKILL.md", path: join(process.cwd(), "attio", "SKILL.md") },
+		{ title: "Pi documentation", path: getReadmePath() },
 	] as const) {
-		test(`shows the read line range in compact ${scenario.title} reads before the expand hint`, () => {
+		test(`shows explicit offset and limit arguments for ${scenario.title} reads`, () => {
 			const component = new ToolExecutionComponent(
 				"read",
 				`tool-compact-range-${scenario.title}`,
@@ -521,9 +578,10 @@ describe("ToolExecutionComponent parity", () => {
 				process.cwd(),
 			);
 
-			const collapsed = stripAnsi(component.render(120).join("\n"));
-			expect(collapsed).toContain(scenario.compact);
-			expect(collapsed.indexOf(":120-329")).toBeLessThan(collapsed.indexOf("to expand"));
+			const collapsed = stripAnsi(component.render(240).join("\n"));
+			expect(collapsed).toContain("offset=120");
+			expect(collapsed).toContain("limit=210");
+			expect(collapsed).not.toContain(":120-329");
 		});
 	}
 });

@@ -1,9 +1,9 @@
 # Tool call and result display modes
 
-- **Status:** Draft design spec
+- **Status:** Implemented on the `pg/private/tool-display-modes` topic branch
 - **Owner:** `packages/coding-agent` interactive TUI
-- **Current behavior:** Tool calls and results share one `ToolExecutionComponent`; tool results use a global `expanded: boolean`, and registered tools without `renderCall` may show only the tool name.
-- **Backlog:** Implementation, rendering tests, settings/keybinding decisions, and real-session validation.
+- **Current behavior:** Tool calls default to a generic one-row projection of the actual supplied arguments; results default to an inline minimal status and can cycle independently through minimal, compact, and full modes. Existing compact/full result renderers and the legacy `expanded: boolean` API remain compatible.
+- **Backlog:** Human visual acceptance after merge into `pg/daily`.
 
 ## Problem
 

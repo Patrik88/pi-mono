@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-22T14:16:20.067Z",
+  "proposals": [
+    {
+      "proposalId": "P001",
+      "proposalType": "task_import",
+      "title": "Initialize Pi Mono tool display work",
+      "createdAt": "2026-07-22T14:16:05.380Z",
+      "createdBy": "agent",
+      "lifecycleStatus": "archived",
+      "targetPlanPath": ".pi/tasks.json",
+      "operationCount": 2,
+      "warningCount": 0,
+      "decisionItemCount": 0,
+      "path": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes/.pi/task-manager/proposals/archive/P001.json",
+      "archived": true
+    }
+  ]
+}

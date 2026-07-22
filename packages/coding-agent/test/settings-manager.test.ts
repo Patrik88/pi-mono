@@ -420,6 +420,28 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("toolDisplay", () => {
+		it("defaults call and result display to minimal", () => {
+			const manager = SettingsManager.inMemory();
+			expect(manager.getToolCallDisplayMode()).toBe("minimal");
+			expect(manager.getToolResultDisplayMode()).toBe("minimal");
+		});
+
+		it("loads supported call and result modes", () => {
+			const manager = SettingsManager.inMemory({ toolDisplay: { call: "full", result: "compact" } });
+			expect(manager.getToolCallDisplayMode()).toBe("full");
+			expect(manager.getToolResultDisplayMode()).toBe("compact");
+		});
+
+		it("falls back safely for unsupported persisted modes", () => {
+			const manager = SettingsManager.inMemory({
+				toolDisplay: { call: "unknown", result: "unknown" },
+			} as never);
+			expect(manager.getToolCallDisplayMode()).toBe("minimal");
+			expect(manager.getToolResultDisplayMode()).toBe("minimal");
+		});
+	});
+
 	describe("shellCommandPrefix", () => {
 		it("should load shellCommandPrefix from settings", () => {
 			const settingsPath = join(agentDir, "settings.json");

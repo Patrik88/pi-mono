@@ -2160,9 +2160,9 @@ export default function (pi: ExtensionAPI) {
 
 ### Custom Rendering
 
-Tools can provide `renderCall` and `renderResult` for custom TUI display. See [tui.md](tui.md) for the full component API and [tool-execution.ts](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/src/modes/interactive/components/tool-execution.ts) for how tool rows are composed.
+Tools can provide `renderCall` and `renderResult` for custom TUI display beyond Pi's core-owned minimal projection. See [tui.md](tui.md) for the full component API and [tool-execution.ts](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/src/modes/interactive/components/tool-execution.ts) for how tool rows are composed.
 
-By default, tool output is wrapped in a `Box` that handles padding and background. A defined `renderCall` or `renderResult` must return a `Component`. If a slot renderer is not defined, `tool-execution.ts` uses fallback rendering for that slot.
+Minimal result mode is unboxed and core-owned: it shows the actual call arguments plus a bounded inline result status. Compact/full results use the existing `Box` or self-rendered shell and call `renderResult`; Pi may invoke `renderCall` offscreen to preserve preview state, but minimal call mode continues to show only the generic argument line. Full call mode also reveals custom `renderCall` output. A defined renderer must return a `Component`. If a result renderer is not defined, `tool-execution.ts` uses fallback output rendering.
 
 Set `renderShell: "self"` when the tool should render its own shell instead of using the default `Box`. This is useful for tools that need complete control over framing or background behavior, for example large previews that must stay visually stable after the tool settles.
 
@@ -2187,13 +2187,15 @@ pi.registerTool({
 - `state` - shared row-local state across `renderCall` and `renderResult`
 - `lastComponent` - the previously returned component for that slot, if any
 - `invalidate()` - request a rerender of this tool row
-- `toolCallId`, `cwd`, `executionStarted`, `argsComplete`, `isPartial`, `expanded`, `showImages`, `isError`
+- `toolCallId`, `cwd`, `executionStarted`, `argsComplete`, `isPartial`, `expanded`, `callDisplayMode`, `resultDisplayMode`, `showImages`, `isError`
 
 Use `context.state` for cross-slot shared state. Keep slot-local caches on the returned component instance when you want to reuse and mutate the same component across renders.
 
 #### renderCall
 
-Renders the tool call or header:
+Pi's minimal-result TUI mode renders the actual model-supplied arguments generically on one truncated row and hides custom call detail. In full call mode, Pi shows the complete arguments and the custom `renderCall` component. Compact/full result modes may still invoke `renderCall` offscreen so existing previews and shared renderer state remain intact. HTML export continues to use custom call renderers.
+
+Renders the tool-specific call detail or header:
 
 ```typescript
 import { Text } from "@earendil-works/pi-tui";
@@ -2212,10 +2214,12 @@ renderCall(args, theme, context) {
 
 #### renderResult
 
-Renders the tool result or output:
+Minimal result mode is core-owned and bypasses custom result renderers so Pi can guarantee a one-row call/status display. Custom result renderers handle `compact` and `full`; `displayMode` exposes the richer state while `expanded` remains `true` only for full mode.
+
+Renders the compact or full tool result/output:
 
 ```typescript
-renderResult(result, { expanded, isPartial }, theme, context) {
+renderResult(result, { expanded, displayMode, isPartial }, theme, context) {
   if (isPartial) {
     return new Text(theme.fg("warning", "Processing..."), 0, 0);
   }
@@ -2270,8 +2274,8 @@ Custom editors and `ctx.ui.custom()` components receive `keybindings: Keybinding
 - Use `Text` with padding `(0, 0)`. The default Box handles padding.
 - Use `\n` for multi-line content.
 - Handle `isPartial` for streaming progress.
-- Support `expanded` for detail on demand.
-- Keep default view compact.
+- Support `displayMode` for compact/full detail and preserve `expanded` compatibility.
+- Keep compact rendering bounded; core owns the one-row minimal view.
 - Read `context.args` in `renderResult` instead of copying args into `context.state`.
 - Use `context.state` only for data that must be shared across call and result slots.
 - Reuse `context.lastComponent` when the same component instance can be updated in place.
@@ -2578,7 +2582,7 @@ ctx.ui.addAutocompleteProvider((current) => ({
   },
 }));
 
-// Tool output expansion
+// Legacy tool result expansion compatibility. true selects full; false selects compact.
 const wasExpanded = ctx.ui.getToolsExpanded();
 ctx.ui.setToolsExpanded(true);
 ctx.ui.setToolsExpanded(wasExpanded);
