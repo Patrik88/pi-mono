@@ -332,6 +332,25 @@ describe("AgentSession cooperative pause", () => {
 		expect(fixture.requestCount()).toBe(3);
 	});
 
+	it("resumes a terminating tool batch from queued work without an extra tool-result continuation", async () => {
+		const fixture = await createPauseSession({
+			terminateTool: true,
+			agentEndQueueFollowUp: true,
+		});
+		const prompt = session!.prompt("start");
+		await fixture.toolStarted.promise;
+		fixture.context.requestPause?.();
+		fixture.releaseTool.resolve();
+		await prompt;
+
+		expect(fixture.requestCount()).toBe(1);
+		expect(fixture.context.getPauseStatus?.().state).toBe("paused");
+		await fixture.context.resumePausedRun?.();
+		expect(fixture.requestCount()).toBe(2);
+		const userMessages = session!.agent.state.messages.filter((message) => message.role === "user");
+		expect(userMessages).toHaveLength(2);
+	});
+
 	it("does not manufacture a continuation after a terminating tool batch", async () => {
 		const fixture = await createPauseSession({
 			terminateTool: true,

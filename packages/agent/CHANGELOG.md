@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added `Agent.shouldStopAfterTurn` support, including `hasMoreToolCalls` continuation disposition, so stateful Agent users can stop cleanly after a completed assistant turn and its tool results before queued continuation or another provider request.
+- Added `Agent.shouldStopAfterTurn` support, including `hasMoreToolCalls` continuation disposition, and `Agent.continueFromQueuedMessages()` for queue-first continuation after terminal tool batches.
 
 ## [0.80.10] - 2026-07-16
 
