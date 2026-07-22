@@ -292,7 +292,10 @@ interface ToolDefinitionEntry {
 interface PausedContinuation {
 	sessionId: string;
 	leafId: string | null;
+	requiresQueuedMessages: boolean;
 }
+
+type AgentTurnStopDisposition = "none" | "safe_pause" | "external";
 
 function estimateMessagesTokens(messages: AgentMessage[]): number {
 	let tokens = 0;
@@ -329,6 +332,7 @@ export class AgentSession {
 	private _pauseRequested = false;
 	private _pausedContinuation: PausedContinuation | undefined;
 	private _lastTurnHasMoreToolCalls = false;
+	private _lastTurnStopDisposition: AgentTurnStopDisposition = "none";
 
 	/** Tracks pending steering messages for UI display. Removed when delivered. */
 	private _steeringMessages: string[] = [];
@@ -544,11 +548,14 @@ export class AgentSession {
 		this.agent.shouldStopAfterTurn = async (turn, signal) => {
 			this._lastTurnHasMoreToolCalls = turn.hasMoreToolCalls;
 			if (await previousShouldStopAfterTurn?.(turn, signal)) {
+				this._lastTurnStopDisposition = "external";
 				this._pauseRequested = false;
 				return true;
 			}
 			if (!this._pauseRequested) return false;
-			return turn.hasMoreToolCalls || this.agent.hasQueuedMessages();
+			if (!turn.hasMoreToolCalls && !this.agent.hasQueuedMessages()) return false;
+			this._lastTurnStopDisposition = "safe_pause";
+			return true;
 		};
 	}
 
@@ -628,6 +635,11 @@ export class AgentSession {
 
 	/** Internal handler for agent events - shared by subscribe and reconnect */
 	private _handleAgentEvent = async (event: AgentEvent): Promise<void> => {
+		if (event.type === "turn_start") {
+			this._lastTurnHasMoreToolCalls = false;
+			this._lastTurnStopDisposition = "none";
+		}
+
 		// When a user message starts, check if it's from either queue and remove it BEFORE emitting
 		// This ensures the UI sees the updated queue state
 		if (event.type === "message_start" && event.message.role === "user") {
@@ -873,6 +885,7 @@ export class AgentSession {
 		this._pauseRequested = false;
 		this._pausedContinuation = undefined;
 		this._lastTurnHasMoreToolCalls = false;
+		this._lastTurnStopDisposition = "none";
 		try {
 			this.abortRetry();
 			this.abortCompaction();
@@ -1220,9 +1233,25 @@ export class AgentSession {
 	private async _runAgentOperation(start: () => Promise<void>): Promise<void> {
 		this._isAgentRunActive = true;
 		try {
-			this._lastTurnHasMoreToolCalls = false;
+			this._resetTurnStopState();
 			await start();
 			while (true) {
+				if (this._lastTurnStopDisposition === "external") {
+					this._pauseRequested = false;
+					break;
+				}
+
+				if (this._lastTurnStopDisposition === "safe_pause") {
+					if (this._pauseRequested) {
+						this._capturePausedContinuation();
+						break;
+					}
+					if (!this._canContinueCurrentAgentState()) break;
+					this._resetTurnStopState();
+					await this.agent.continue();
+					continue;
+				}
+
 				if (this._pauseRequested && (this._lastTurnHasMoreToolCalls || this.agent.hasQueuedMessages())) {
 					this._capturePausedContinuation();
 					break;
@@ -1236,7 +1265,7 @@ export class AgentSession {
 				}
 				if (!shouldContinue) break;
 
-				this._lastTurnHasMoreToolCalls = false;
+				this._resetTurnStopState();
 				await this.agent.continue();
 			}
 		} finally {
@@ -1246,11 +1275,23 @@ export class AgentSession {
 		}
 	}
 
+	private _resetTurnStopState(): void {
+		this._lastTurnHasMoreToolCalls = false;
+		this._lastTurnStopDisposition = "none";
+	}
+
+	private _canContinueCurrentAgentState(): boolean {
+		const lastMessage = this.agent.state.messages[this.agent.state.messages.length - 1];
+		return Boolean(lastMessage && (lastMessage.role !== "assistant" || this.agent.hasQueuedMessages()));
+	}
+
 	private _capturePausedContinuation(): void {
+		const lastMessage = this.agent.state.messages[this.agent.state.messages.length - 1];
 		this._pauseRequested = false;
 		this._pausedContinuation = {
 			sessionId: this.sessionId,
 			leafId: this.sessionManager.getLeafId(),
+			requiresQueuedMessages: lastMessage?.role === "assistant",
 		};
 	}
 
@@ -1729,6 +1770,9 @@ export class AgentSession {
 		this._steeringMessages = [];
 		this._followUpMessages = [];
 		this.agent.clearAllQueues();
+		if (this._pausedContinuation?.requiresQueuedMessages) {
+			this._pausedContinuation = undefined;
+		}
 		this._emitQueueUpdate();
 		return { steering, followUp };
 	}
