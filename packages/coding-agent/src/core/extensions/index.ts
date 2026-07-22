@@ -22,6 +22,8 @@ export { ExtensionRunner } from "./runner.ts";
 export type {
 	AfterProviderResponseEvent,
 	AgentEndEvent,
+	AgentPauseState,
+	AgentPauseStatus,
 	AgentSettledEvent,
 	AgentStartEvent,
 	// Re-exports

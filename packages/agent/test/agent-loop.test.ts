@@ -1128,6 +1128,7 @@ describe("agentLoop with AgentMessage", () => {
 		let followUpPolls = 0;
 		let callbackToolResultIds: string[] = [];
 		let callbackContextRoles: string[] = [];
+		let callbackHasMoreToolCalls = false;
 		const config: AgentLoopConfig = {
 			model: createModel(),
 			convertToLlm: identityConverter,
@@ -1139,10 +1140,11 @@ describe("agentLoop with AgentMessage", () => {
 				followUpPolls++;
 				return [createUserMessage("follow up should stay queued")];
 			},
-			shouldStopAfterTurn: async ({ message, toolResults, context }) => {
+			shouldStopAfterTurn: async ({ message, toolResults, hasMoreToolCalls, context }) => {
 				expect(message.role).toBe("assistant");
 				callbackToolResultIds = toolResults.map((toolResult) => toolResult.toolCallId);
 				callbackContextRoles = context.messages.map((contextMessage) => contextMessage.role);
+				callbackHasMoreToolCalls = hasMoreToolCalls;
 				return true;
 			},
 		};
@@ -1181,6 +1183,7 @@ describe("agentLoop with AgentMessage", () => {
 		expect(followUpPolls).toBe(0);
 		expect(callbackToolResultIds).toEqual(["tool-1"]);
 		expect(callbackContextRoles).toEqual(["user", "assistant", "toolResult"]);
+		expect(callbackHasMoreToolCalls).toBe(true);
 		expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "toolResult"]);
 		expect(events.map((event) => event.type)).toEqual([
 			"agent_start",

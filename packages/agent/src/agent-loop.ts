@@ -226,6 +226,7 @@ async function runLoop(
 			const nextTurnContext = {
 				message,
 				toolResults,
+				hasMoreToolCalls,
 				context: currentContext,
 				newMessages,
 			};
@@ -246,10 +247,8 @@ async function runLoop(
 
 			if (
 				await config.shouldStopAfterTurn?.({
-					message,
-					toolResults,
+					...nextTurnContext,
 					context: currentContext,
-					newMessages,
 				})
 			) {
 				await emit({ type: "agent_end", messages: newMessages });

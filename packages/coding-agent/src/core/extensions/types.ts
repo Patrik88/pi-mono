@@ -301,6 +301,18 @@ export interface CompactOptions {
 	onError?: (error: Error) => void;
 }
 
+export type AgentPauseState = "idle" | "running" | "pause_requested" | "paused";
+
+export interface AgentPauseStatus {
+	/** Whether this runtime implements cooperative pause/continue. */
+	supported: boolean;
+	state: AgentPauseState;
+	/** True only when resumePausedRun() can continue the exact paused run. */
+	resumable: boolean;
+	/** Present when a formerly resumable pause was invalidated by session or branch drift. */
+	staleReason?: "session" | "branch";
+}
+
 /**
  * Context passed to extension event handlers.
  */
@@ -335,6 +347,14 @@ export interface ExtensionContext {
 	signal: AbortSignal | undefined;
 	/** Abort the current agent operation */
 	abort(): void;
+	/** Get cooperative pause state when supported by the runtime. */
+	getPauseStatus?(): AgentPauseStatus;
+	/** Request a clean stop after the current assistant turn and its tool executions finish. */
+	requestPause?(): AgentPauseStatus;
+	/** Cancel a pause request that has not reached its turn boundary yet. */
+	cancelPauseRequest?(): AgentPauseStatus;
+	/** Resume the exact paused continuation without injecting a synthetic user message. */
+	resumePausedRun?(): Promise<AgentPauseStatus>;
 	/** Whether there are queued messages waiting */
 	hasPendingMessages(): boolean;
 	/** Gracefully shutdown pi and exit. Available in all contexts. */
@@ -1673,6 +1693,10 @@ export interface ExtensionContextActions {
 	isProjectTrusted: () => boolean;
 	getSignal: () => AbortSignal | undefined;
 	abort: () => void;
+	getPauseStatus?: () => AgentPauseStatus;
+	requestPause?: () => AgentPauseStatus;
+	cancelPauseRequest?: () => AgentPauseStatus;
+	resumePausedRun?: () => Promise<AgentPauseStatus>;
 	hasPendingMessages: () => boolean;
 	shutdown: () => void;
 	getContextUsage: () => ContextUsage | undefined;
