@@ -1,0 +1,773 @@
+{
+  "version": 1,
+  "id": "pi-mono",
+  "title": "Pi Mono",
+  "objective": "Track implementation work for Patrik's Pi Mono fork.",
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Implement transparent minimal/full tool call and result display modes",
+      "status": "done",
+      "readiness": "ready",
+      "role": "worker",
+      "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+      "gitRepo": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+      "rationale": "Tool calls currently hide exact model-supplied arguments for extension tools and compact tool results consume too much vertical space. Implement the approved design in the Pi core TUI.",
+      "sourceRefs": [
+        {
+          "type": "design-spec",
+          "path": "packages/coding-agent/docs/tool-display-modes.md",
+          "reason": "Approved tool display behavior and compatibility contract."
+        }
+      ],
+      "requiredReferences": [
+        {
+          "path": "packages/coding-agent/docs/tool-display-modes.md",
+          "reason": "Approved behavior, compatibility, interaction, and acceptance contract.",
+          "embed": true
+        }
+      ],
+      "suggestedReferences": [
+        {
+          "path": "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+          "reason": "Primary tool execution renderer.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+          "reason": "Global display state and keybinding dispatch.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/src/core/settings-manager.ts",
+          "reason": "Persistent display defaults.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/src/core/keybindings.ts",
+          "reason": "Configurable tool display actions.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/src/core/extensions/types.ts",
+          "reason": "Renderer and extension compatibility contracts.",
+          "embed": false
+        }
+      ],
+      "likelyFiles": [
+        "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+        "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+        "packages/coding-agent/src/core/settings-manager.ts",
+        "packages/coding-agent/src/core/keybindings.ts",
+        "packages/coding-agent/src/core/extensions/types.ts",
+        "packages/coding-agent/docs/settings.md",
+        "packages/coding-agent/docs/keybindings.md",
+        "packages/coding-agent/test"
+      ],
+      "readBudget": {
+        "mode": "focused",
+        "maxExtraReadFilesBeforeEditing": 8,
+        "guidance": "Use the embedded spec as the contract. Inspect only the current rendering, settings, and keybinding implementations needed for the change."
+      },
+      "acceptanceCriteria": [
+        "Tool calls support minimal and full display modes, with minimal as the default.",
+        "Minimal tool calls expose actual model-supplied top-level argument names and values in at most one visual terminal row, with visible truncation or omission markers.",
+        "Tool results support minimal, compact, and full modes, with minimal as the default and inline with the call when possible.",
+        "Minimal tool execution rendering bypasses the current mandatory spacer and vertical box padding.",
+        "Compact and full modes preserve existing specialized renderers and backward compatibility for expanded:boolean and setToolsExpanded(boolean).",
+        "Call and result modes are independently configurable and controllable through configurable keybindings.",
+        "Session JSONL, model-visible context, and ToolOutputPolicy semantics remain unchanged.",
+        "Focused rendering tests and npm run check pass; runtime-impact changes are documented."
+      ],
+      "validation": [
+        {
+          "kind": "command",
+          "command": "npm run check",
+          "cwd": "{repo}",
+          "timeoutSeconds": 600,
+          "required": true,
+          "noninteractive": true
+        }
+      ],
+      "notes": "Implement in the dedicated pg/private/tool-display-modes worktree. Commit completed validated work, then merge --no-ff into pg/daily only after the full task is complete.\n\n[2026-07-22T15:05:23.721Z] Manager accepted after focused renderer/settings tests, npm run check, coding-agent build, and an interactive pseudo-TTY smoke showing read(path=\"package.json\", offset=1, limit=5) with inline success summary.",
+      "description": "Implement the approved Pi core TUI design for transparent tool calls and low-density tool results. Add independent call minimal/full and result minimal/compact/full modes, default both to minimal, preserve exact model-supplied argument names, retain legacy renderer compatibility, update configurable settings/keybindings/docs, and validate with focused tests plus npm run check.",
+      "lease": {
+        "status": "closed",
+        "owner": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+        "agent": "pi",
+        "sessionId": "019f89f8-6ed4-716b-bbc9-85c2df00b667",
+        "startedAt": "2026-07-22T14:17:07.192Z",
+        "heartbeatAt": "2026-07-22T15:03:39.864Z",
+        "expiresAt": "2026-07-22T15:33:39.864Z",
+        "cwd": "/Users/pg/Sites/proj/pi-extensions",
+        "closedAt": "2026-07-22T15:05:23.721Z",
+        "closedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+        "closeReason": "done"
+      },
+      "completion": {
+        "schemaVersion": 1,
+        "baselines": [
+          {
+            "schemaVersion": 1,
+            "id": "baseline-720c77ee-b7d7-4cd6-ba2e-562dcfcbbb7e",
+            "repo": "pi-mono-pg-private-tool-display-modes",
+            "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+            "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+            "capturedAt": "2026-07-22T14:17:07.192Z",
+            "claimedAt": "2026-07-22T14:17:07.192Z",
+            "capturedBy": {
+              "owner": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+              "agent": "pi",
+              "sessionId": "019f89f8-6ed4-716b-bbc9-85c2df00b667",
+              "cwd": "/Users/pg/Sites/proj/pi-extensions"
+            },
+            "warnings": [
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              }
+            ],
+            "startSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+            "startTree": "e30bedeb7fcd603a556121e17a7068d618b2a6cf",
+            "evidenceScope": "task-relevant",
+            "taskScopePaths": [
+              "packages/coding-agent/docs/keybindings.md",
+              "packages/coding-agent/docs/settings.md",
+              "packages/coding-agent/src/core/extensions/types.ts",
+              "packages/coding-agent/src/core/keybindings.ts",
+              "packages/coding-agent/src/core/settings-manager.ts",
+              "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+              "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+              "packages/coding-agent/test"
+            ],
+            "dirtyAtStart": false,
+            "wholeWorktreeDirtyAtStart": true,
+            "startDirtyHash": "sha256:bdadc50719d0449433b6334ef91c62e42ceca156affe4aa93d8a9c729ec7aad3",
+            "fingerprint": {
+              "schemaVersion": 1,
+              "algorithm": "task-manager-content-fingerprint-v1",
+              "hash": "sha256:fe31594e3d8734d941458c9efef5fa36f820449357000e48a0aa9a8b882826db",
+              "repo": "pi-mono-pg-private-tool-display-modes",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+              "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+              "generatedAt": "2026-07-22T14:17:07.192Z",
+              "baselineSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+              "headSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+              "headTree": "e30bedeb7fcd603a556121e17a7068d618b2a6cf",
+              "evidenceScope": "task-relevant",
+              "scopePaths": [
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test"
+              ],
+              "paths": [],
+              "validationPlanHash": "sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed",
+              "warnings": [
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ]
+            }
+          }
+        ],
+        "latestBaselineId": "baseline-720c77ee-b7d7-4cd6-ba2e-562dcfcbbb7e",
+        "warnings": [
+          {
+            "code": "completion_unrelated_worktree_changes_excluded",
+            "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+          },
+          {
+            "code": "providers_advisory_only",
+            "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+          },
+          {
+            "code": "auto_commit_disabled",
+            "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+          },
+          {
+            "code": "completion_unrelated_worktree_changes_excluded",
+            "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+          }
+        ],
+        "attempts": [
+          {
+            "schemaVersion": 1,
+            "id": "completion-ac7a088d-1e4d-45ca-ba0d-1b1da6f39a1d",
+            "taskId": "T001",
+            "requestedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+            "requestedAt": "2026-07-22T15:04:55.662Z",
+            "repoBaselines": [
+              {
+                "schemaVersion": 1,
+                "id": "baseline-720c77ee-b7d7-4cd6-ba2e-562dcfcbbb7e",
+                "repo": "pi-mono-pg-private-tool-display-modes",
+                "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+                "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+                "capturedAt": "2026-07-22T14:17:07.192Z",
+                "claimedAt": "2026-07-22T14:17:07.192Z",
+                "capturedBy": {
+                  "owner": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+                  "agent": "pi",
+                  "sessionId": "019f89f8-6ed4-716b-bbc9-85c2df00b667",
+                  "cwd": "/Users/pg/Sites/proj/pi-extensions"
+                },
+                "warnings": [
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  }
+                ],
+                "startSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+                "startTree": "e30bedeb7fcd603a556121e17a7068d618b2a6cf",
+                "evidenceScope": "task-relevant",
+                "taskScopePaths": [
+                  "packages/coding-agent/docs/keybindings.md",
+                  "packages/coding-agent/docs/settings.md",
+                  "packages/coding-agent/src/core/extensions/types.ts",
+                  "packages/coding-agent/src/core/keybindings.ts",
+                  "packages/coding-agent/src/core/settings-manager.ts",
+                  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                  "packages/coding-agent/test"
+                ],
+                "dirtyAtStart": false,
+                "wholeWorktreeDirtyAtStart": true,
+                "startDirtyHash": "sha256:bdadc50719d0449433b6334ef91c62e42ceca156affe4aa93d8a9c729ec7aad3",
+                "fingerprint": {
+                  "schemaVersion": 1,
+                  "algorithm": "task-manager-content-fingerprint-v1",
+                  "hash": "sha256:fe31594e3d8734d941458c9efef5fa36f820449357000e48a0aa9a8b882826db",
+                  "repo": "pi-mono-pg-private-tool-display-modes",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+                  "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+                  "generatedAt": "2026-07-22T14:17:07.192Z",
+                  "baselineSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+                  "headSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+                  "headTree": "e30bedeb7fcd603a556121e17a7068d618b2a6cf",
+                  "evidenceScope": "task-relevant",
+                  "scopePaths": [
+                    "packages/coding-agent/docs/keybindings.md",
+                    "packages/coding-agent/docs/settings.md",
+                    "packages/coding-agent/src/core/extensions/types.ts",
+                    "packages/coding-agent/src/core/keybindings.ts",
+                    "packages/coding-agent/src/core/settings-manager.ts",
+                    "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                    "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                    "packages/coding-agent/test"
+                  ],
+                  "paths": [],
+                  "validationPlanHash": "sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed",
+                  "warnings": [
+                    {
+                      "code": "completion_unrelated_worktree_changes_excluded",
+                      "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                    }
+                  ]
+                }
+              }
+            ],
+            "diffSummary": {
+              "schemaVersion": 1,
+              "repo": "pi-mono-pg-private-tool-display-modes",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+              "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+              "baselineSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+              "capturedAt": "2026-07-22T15:05:04.595Z",
+              "evidenceScope": "task-relevant",
+              "taskScopePaths": [
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test"
+              ],
+              "evidencePaths": [
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test/settings-manager.test.ts",
+                "packages/coding-agent/test/tool-execution-component.test.ts"
+              ],
+              "wholeWorktreeDirty": true,
+              "all": [
+                ".pi/task-manager/",
+                ".pi/tasks.json",
+                "node_modules",
+                "packages/agent/node_modules",
+                "packages/ai/node_modules",
+                "packages/coding-agent/CHANGELOG.md",
+                "packages/coding-agent/docs/extensions.md",
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/docs/tool-display-modes.md",
+                "packages/coding-agent/node_modules",
+                "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/core/tools/display-modes.ts",
+                "packages/coding-agent/src/core/tools/write.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test/settings-manager.test.ts",
+                "packages/coding-agent/test/tool-execution-component.test.ts",
+                "packages/tui/node_modules"
+              ],
+              "taskRelevant": [
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test/settings-manager.test.ts",
+                "packages/coding-agent/test/tool-execution-component.test.ts"
+              ],
+              "tracked": [
+                "packages/coding-agent/CHANGELOG.md",
+                "packages/coding-agent/docs/extensions.md",
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/docs/tool-display-modes.md",
+                "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/core/tools/write.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test/settings-manager.test.ts",
+                "packages/coding-agent/test/tool-execution-component.test.ts"
+              ],
+              "untracked": [
+                ".pi/task-manager/",
+                ".pi/tasks.json",
+                "node_modules",
+                "packages/agent/node_modules",
+                "packages/ai/node_modules",
+                "packages/coding-agent/node_modules",
+                "packages/coding-agent/src/core/tools/display-modes.ts",
+                "packages/tui/node_modules"
+              ],
+              "deleted": [],
+              "statusEntries": [
+                {
+                  "path": "packages/coding-agent/CHANGELOG.md",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/docs/extensions.md",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/docs/keybindings.md",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/docs/settings.md",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/docs/tool-display-modes.md",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/core/extensions/types.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/core/keybindings.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/core/settings-manager.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/core/tools/write.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/test/settings-manager.test.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/test/tool-execution-component.test.ts",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": ".pi/task-manager/",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": ".pi/tasks.json",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "node_modules",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/agent/node_modules",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/ai/node_modules",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/node_modules",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/src/core/tools/display-modes.ts",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/tui/node_modules",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                }
+              ],
+              "warnings": [
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ]
+            },
+            "validationPlan": {
+              "schemaVersion": 1,
+              "algorithm": "task-manager-validation-plan-v1",
+              "hash": "sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed",
+              "sources": [
+                "task.validation"
+              ],
+              "checks": [
+                {
+                  "id": "task-validation-1",
+                  "source": "task.validation",
+                  "kind": "command",
+                  "execution": "automated",
+                  "command": "npm run check",
+                  "cwd": "{repo}",
+                  "required": true,
+                  "timeoutSeconds": 600,
+                  "reasonCode": "validation.command_planned"
+                }
+              ],
+              "warnings": [],
+              "blockers": []
+            },
+            "validationResults": [
+              {
+                "schemaVersion": 1,
+                "validationPlanHash": "sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed",
+                "status": "passed",
+                "startedAt": "2026-07-22T15:04:55.663Z",
+                "finishedAt": "2026-07-22T15:05:04.594Z",
+                "freshnessFingerprint": {
+                  "schemaVersion": 1,
+                  "algorithm": "task-manager-content-fingerprint-v1",
+                  "hash": "sha256:495ffdc1cf1f519b6510b2e2e4e88b7af2942bfb1b38e390307ddd7608dd9a2d",
+                  "repo": "pi-mono-pg-private-tool-display-modes",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+                  "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+                  "generatedAt": "2026-07-22T15:04:55.662Z",
+                  "baselineSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+                  "headSha": "cc8785d88ff79dda65838ec0e17a008d8ba26386",
+                  "headTree": "e30bedeb7fcd603a556121e17a7068d618b2a6cf",
+                  "evidenceScope": "task-relevant",
+                  "scopePaths": [
+                    "packages/coding-agent/docs/keybindings.md",
+                    "packages/coding-agent/docs/settings.md",
+                    "packages/coding-agent/src/core/extensions/types.ts",
+                    "packages/coding-agent/src/core/keybindings.ts",
+                    "packages/coding-agent/src/core/settings-manager.ts",
+                    "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                    "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                    "packages/coding-agent/test"
+                  ],
+                  "paths": [
+                    "packages/coding-agent/docs/keybindings.md",
+                    "packages/coding-agent/docs/settings.md",
+                    "packages/coding-agent/src/core/extensions/types.ts",
+                    "packages/coding-agent/src/core/keybindings.ts",
+                    "packages/coding-agent/src/core/settings-manager.ts",
+                    "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                    "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                    "packages/coding-agent/test/settings-manager.test.ts",
+                    "packages/coding-agent/test/tool-execution-component.test.ts"
+                  ],
+                  "validationPlanHash": "sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed",
+                  "warnings": [
+                    {
+                      "code": "completion_unrelated_worktree_changes_excluded",
+                      "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                    }
+                  ]
+                },
+                "results": [
+                  {
+                    "index": 0,
+                    "kind": "command",
+                    "label": "npm run check",
+                    "command": "npm run check",
+                    "required": true,
+                    "status": "passed",
+                    "cwd": "/Users/pg/Sites/proj/pi-extensions",
+                    "timeoutSeconds": 600,
+                    "durationMs": 8930,
+                    "exitCode": 0,
+                    "stdout": "\n> pi-extensions@0.1.0 check\n> tsc -p tsconfig.json --noEmit\n\n"
+                  }
+                ],
+                "warnings": [
+                  {
+                    "code": "providers_advisory_only",
+                    "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+                  },
+                  {
+                    "code": "auto_commit_disabled",
+                    "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+                  },
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  },
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  }
+                ],
+                "blockers": []
+              }
+            ],
+            "commitPlan": {
+              "schemaVersion": 1,
+              "mode": "manual",
+              "repo": "pi-mono-pg-private-tool-display-modes",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes",
+              "files": [
+                "packages/coding-agent/docs/keybindings.md",
+                "packages/coding-agent/docs/settings.md",
+                "packages/coding-agent/src/core/extensions/types.ts",
+                "packages/coding-agent/src/core/keybindings.ts",
+                "packages/coding-agent/src/core/settings-manager.ts",
+                "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+                "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+                "packages/coding-agent/test/settings-manager.test.ts",
+                "packages/coding-agent/test/tool-execution-component.test.ts"
+              ],
+              "autoCommitAllowed": false,
+              "warnings": [
+                {
+                  "code": "auto_commit_disabled",
+                  "message": "MVP1 does not auto-commit; commit policy is reported as guidance only."
+                }
+              ]
+            },
+            "acceptanceDecision": {
+              "schemaVersion": 1,
+              "decidedAt": "2026-07-22T15:04:55.662Z",
+              "decidedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+              "state": "ready_for_manager_acceptance",
+              "reason": "Explicit task.validation passed; manager acceptance remains the final done action.",
+              "warnings": [
+                {
+                  "code": "providers_advisory_only",
+                  "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+                },
+                {
+                  "code": "auto_commit_disabled",
+                  "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+                },
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                },
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ]
+            },
+            "warnings": [
+              {
+                "code": "providers_advisory_only",
+                "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+              },
+              {
+                "code": "auto_commit_disabled",
+                "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+              },
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              },
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              }
+            ],
+            "blockers": []
+          }
+        ],
+        "latestAttemptId": "completion-ac7a088d-1e4d-45ca-ba0d-1b1da6f39a1d",
+        "latestAcceptanceDecision": {
+          "schemaVersion": 1,
+          "decidedAt": "2026-07-22T15:04:55.662Z",
+          "decidedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+          "state": "ready_for_manager_acceptance",
+          "reason": "Explicit task.validation passed; manager acceptance remains the final done action.",
+          "warnings": [
+            {
+              "code": "providers_advisory_only",
+              "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+            },
+            {
+              "code": "auto_commit_disabled",
+              "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+            },
+            {
+              "code": "completion_unrelated_worktree_changes_excluded",
+              "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+            },
+            {
+              "code": "completion_unrelated_worktree_changes_excluded",
+              "message": "13 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+            }
+          ]
+        }
+      },
+      "attempts": [
+        {
+          "at": "2026-07-22T15:05:04.711Z",
+          "by": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+          "agent": "pi",
+          "sessionId": "019f89f8-6ed4-716b-bbc9-85c2df00b667",
+          "kind": "request_completion",
+          "summary": "Request-completion completion-ac7a088d-1e4d-45ca-ba0d-1b1da6f39a1d: ready_for_manager_acceptance; validation=passed; validationPlan=sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed.",
+          "completionAttemptId": "completion-ac7a088d-1e4d-45ca-ba0d-1b1da6f39a1d",
+          "acceptanceDecision": "ready_for_manager_acceptance",
+          "validationPlanHash": "sha256:7d3d78e8ea569cb905f7d993e9a03375e06f56914d959b83e79af2beee91d0ed"
+        },
+        {
+          "at": "2026-07-22T15:05:23.721Z",
+          "by": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+          "agent": "pi",
+          "sessionId": "019f89f8-6ed4-716b-bbc9-85c2df00b667",
+          "kind": "attempt",
+          "summary": "Implemented independent call minimal/full and result minimal/compact/full modes; preserved compact/full renderers and legacy expansion compatibility; validated npm run check, 64 focused tests, coding-agent build, and interactive TUI smoke."
+        }
+      ],
+      "actualFilesChanged": [
+        "packages/coding-agent/CHANGELOG.md",
+        "packages/coding-agent/docs/extensions.md",
+        "packages/coding-agent/docs/keybindings.md",
+        "packages/coding-agent/docs/settings.md",
+        "packages/coding-agent/docs/tool-display-modes.md",
+        "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+        "packages/coding-agent/src/core/extensions/types.ts",
+        "packages/coding-agent/src/core/keybindings.ts",
+        "packages/coding-agent/src/core/settings-manager.ts",
+        "packages/coding-agent/src/core/tools/display-modes.ts",
+        "packages/coding-agent/src/core/tools/write.ts",
+        "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+        "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+        "packages/coding-agent/test/settings-manager.test.ts",
+        "packages/coding-agent/test/tool-execution-component.test.ts"
+      ],
+      "docsState": {
+        "status": "updated",
+        "updatedPaths": [
+          "packages/coding-agent/CHANGELOG.md",
+          "packages/coding-agent/docs/extensions.md",
+          "packages/coding-agent/docs/keybindings.md",
+          "packages/coding-agent/docs/settings.md",
+          "packages/coding-agent/docs/tool-display-modes.md"
+        ],
+        "note": "Runtime behavior, settings, keybindings, extension compatibility, and changelog documentation updated in the implementation change."
+      }
+    }
+  ],
+  "proposalApplications": [
+    {
+      "proposalId": "P001",
+      "proposalType": "task_import",
+      "appliedAt": "2026-07-22T14:16:20.053Z",
+      "appliedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
+      "operationCount": 2
+    }
+  ],
+  "updatedAt": "2026-07-22T15:05:40.439Z"
+}
