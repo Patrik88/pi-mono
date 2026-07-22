@@ -987,6 +987,7 @@ describe("agentLoop with AgentMessage", () => {
 			tools: [tool],
 		};
 		let convertedSecondTurnSystemPrompt = "";
+		const stopContextSystemPrompts: string[] = [];
 		let prepared = false;
 		const config: AgentLoopConfig = {
 			model: createModel(),
@@ -1001,6 +1002,10 @@ describe("agentLoop with AgentMessage", () => {
 						tools: currentContext.tools,
 					},
 				};
+			},
+			shouldStopAfterTurn: async ({ context: stopContext }) => {
+				stopContextSystemPrompts.push(stopContext.systemPrompt);
+				return false;
 			},
 		};
 
@@ -1038,6 +1043,7 @@ describe("agentLoop with AgentMessage", () => {
 
 		expect(llmCalls).toBe(2);
 		expect(convertedSecondTurnSystemPrompt).toBe("second prompt");
+		expect(stopContextSystemPrompts[0]).toBe("second prompt");
 	});
 
 	it("should stop after the current turn when shouldStopAfterTurn returns true", async () => {

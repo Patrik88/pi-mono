@@ -79,13 +79,19 @@ describe("AgentSession cooperative pause", () => {
 	async function createPauseSession(
 		options: {
 			terminateTool?: boolean;
+			firstResponseText?: boolean;
+			externalStopAfterTurn?: boolean;
+			deferSecondError?: boolean;
 			agentEndAppendMetadata?: boolean;
+			agentEndCancelPause?: boolean;
 			agentEndQueueFollowUp?: boolean;
 			agentEndRequestPause?: boolean;
 		} = {},
 	) {
 		const toolStarted = deferred();
 		const releaseTool = deferred();
+		const secondRequestStarted = deferred();
+		const releaseSecondError = deferred();
 		let toolSawAbort = false;
 		let requestCount = 0;
 		let agentEndCount = 0;
@@ -110,14 +116,27 @@ describe("AgentSession cooperative pause", () => {
 		const agent = new Agent({
 			getApiKey: () => "test-key",
 			initialState: { model, systemPrompt: "Test", tools: [tool] },
+			shouldStopAfterTurn: options.externalStopAfterTurn ? async () => true : undefined,
 			streamFn: () => {
 				requestCount++;
+				const currentRequest = requestCount;
 				const stream = new MockAssistantStream();
-				queueMicrotask(() => {
-					const message = requestCount === 1 ? assistantToolCall() : assistantText("finished");
+				queueMicrotask(async () => {
+					if (options.deferSecondError && currentRequest === 2) {
+						secondRequestStarted.resolve();
+						await releaseSecondError.promise;
+						stream.push({
+							type: "error",
+							reason: "error",
+							error: { ...assistantText(""), stopReason: "error", errorMessage: "provider failed" },
+						});
+						return;
+					}
+					const firstIsText = options.firstResponseText && currentRequest === 1;
+					const message = currentRequest === 1 && !firstIsText ? assistantToolCall() : assistantText("finished");
 					stream.push({
 						type: "done",
-						reason: requestCount === 1 ? "toolUse" : "stop",
+						reason: currentRequest === 1 && !firstIsText ? "toolUse" : "stop",
 						message,
 					});
 				});
@@ -130,6 +149,7 @@ describe("AgentSession cooperative pause", () => {
 					agentEndCount++;
 					if (agentEndCount !== 1) return;
 					if (options.agentEndAppendMetadata) pi.appendEntry("pause-test-metadata", { complete: true });
+					if (options.agentEndCancelPause) ctx.cancelPauseRequest?.();
 					if (options.agentEndQueueFollowUp) {
 						pi.sendUserMessage("queued during agent_end", { deliverAs: "followUp" });
 					}
@@ -139,6 +159,7 @@ describe("AgentSession cooperative pause", () => {
 		]);
 		const sessionManager = SessionManager.inMemory();
 		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		if (options.deferSecondError) settingsManager.setRetryEnabled(false);
 		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
 		const modelRegistry = await createModelRegistry(authStorage, tempDir);
 		await authStorage.modify("anthropic", async () => ({ type: "api_key", key: "test-key" }));
@@ -158,6 +179,8 @@ describe("AgentSession cooperative pause", () => {
 			sessionManager,
 			toolStarted,
 			releaseTool,
+			secondRequestStarted,
+			releaseSecondError,
 			requestCount: () => requestCount,
 			toolSawAbort: () => toolSawAbort,
 		};
@@ -213,6 +236,69 @@ describe("AgentSession cooperative pause", () => {
 
 		expect(fixture.requestCount()).toBe(2);
 		expect(fixture.context.getPauseStatus?.().state).toBe("idle");
+	});
+
+	it("continues automatically when a safe-pause stop is cancelled during agent_end", async () => {
+		const fixture = await createPauseSession({ agentEndCancelPause: true });
+		const prompt = session!.prompt("start");
+		await fixture.toolStarted.promise;
+		fixture.context.requestPause?.();
+		fixture.releaseTool.resolve();
+		await prompt;
+
+		expect(fixture.requestCount()).toBe(2);
+		expect(fixture.context.getPauseStatus?.().state).toBe("idle");
+	});
+
+	it("honors a pre-existing shouldStopAfterTurn even when agent_end queues work", async () => {
+		const fixture = await createPauseSession({
+			externalStopAfterTurn: true,
+			agentEndQueueFollowUp: true,
+		});
+		const prompt = session!.prompt("start");
+		await fixture.toolStarted.promise;
+		fixture.releaseTool.resolve();
+		await prompt;
+
+		expect(fixture.requestCount()).toBe(1);
+		expect(session!.pendingMessageCount).toBe(1);
+		expect(fixture.context.getPauseStatus?.().state).toBe("idle");
+	});
+
+	it("does not reuse a previous tool continuation after the next provider turn errors", async () => {
+		const fixture = await createPauseSession({ deferSecondError: true });
+		const prompt = session!.prompt("start");
+		await fixture.toolStarted.promise;
+		fixture.releaseTool.resolve();
+		await fixture.secondRequestStarted.promise;
+		fixture.context.requestPause?.();
+		fixture.releaseSecondError.resolve();
+		await prompt;
+
+		expect(fixture.requestCount()).toBe(2);
+		expect(fixture.context.getPauseStatus?.()).toEqual({
+			supported: true,
+			state: "idle",
+			resumable: false,
+		});
+	});
+
+	it("invalidates a queue-only pause when the queue is dequeued", async () => {
+		const fixture = await createPauseSession({
+			firstResponseText: true,
+			agentEndQueueFollowUp: true,
+			agentEndRequestPause: true,
+		});
+		await session!.prompt("start");
+
+		expect(fixture.requestCount()).toBe(1);
+		expect(fixture.context.getPauseStatus?.().state).toBe("paused");
+		expect(session!.clearQueue().followUp).toEqual(["queued during agent_end"]);
+		expect(fixture.context.getPauseStatus?.()).toEqual({
+			supported: true,
+			state: "idle",
+			resumable: false,
+		});
 	});
 
 	it("captures the continuation leaf after awaited agent_end metadata", async () => {
