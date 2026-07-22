@@ -365,22 +365,32 @@ export class Agent {
 		}
 
 		if (lastMessage.role === "assistant") {
-			const queuedSteering = this.steeringQueue.drain();
-			if (queuedSteering.length > 0) {
-				await this.runPromptMessages(queuedSteering, { skipInitialSteeringPoll: true });
-				return;
-			}
-
-			const queuedFollowUps = this.followUpQueue.drain();
-			if (queuedFollowUps.length > 0) {
-				await this.runPromptMessages(queuedFollowUps);
-				return;
-			}
-
-			throw new Error("Cannot continue from message role: assistant");
+			await this.continueFromQueuedMessages();
+			return;
 		}
 
 		await this.runContinuation();
+	}
+
+	/** Continue by consuming queued steering/follow-up messages before another provider request. */
+	async continueFromQueuedMessages(): Promise<void> {
+		if (this.activeRun) {
+			throw new Error("Agent is already processing. Wait for completion before continuing.");
+		}
+
+		const queuedSteering = this.steeringQueue.drain();
+		if (queuedSteering.length > 0) {
+			await this.runPromptMessages(queuedSteering, { skipInitialSteeringPoll: true });
+			return;
+		}
+
+		const queuedFollowUps = this.followUpQueue.drain();
+		if (queuedFollowUps.length > 0) {
+			await this.runPromptMessages(queuedFollowUps);
+			return;
+		}
+
+		throw new Error("No queued messages to continue from");
 	}
 
 	private normalizePromptInput(
