@@ -229,7 +229,7 @@ function validateSessionIdFlags(parsed: Args): void {
 	if (parsed.sessionId === undefined) return;
 
 	const conflictingFlags = [
-		parsed.session ? "--session" : undefined,
+		parsed.session && !parsed.restartSession ? "--session" : undefined,
 		parsed.continue ? "--continue" : undefined,
 		parsed.resume ? "--resume" : undefined,
 	].filter((flag): flag is string => flag !== undefined);
@@ -596,6 +596,14 @@ export async function main(args: string[], options?: MainOptions) {
 			console.error(chalk.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
 			process.exit(1);
 		}
+	}
+	if (parsed.restartSession && parsed.sessionId !== undefined && sessionManager.getSessionId() !== parsed.sessionId) {
+		console.error(
+			chalk.red(
+				`Error: Restart expected session '${parsed.sessionId}', but ${sessionManager.getSessionFile()} contains '${sessionManager.getSessionId()}'.`,
+			),
+		);
+		process.exit(1);
 	}
 	if (parsed.sessionLeaf !== undefined) {
 		try {

@@ -33,6 +33,7 @@ describe("exact-session restart", () => {
 				"dark",
 			],
 			"/tmp/new session.jsonl",
+			"session-2",
 			"leaf-2",
 		);
 		expect(args).toEqual([
@@ -42,6 +43,8 @@ describe("exact-session restart", () => {
 			"dark",
 			"--session",
 			"/tmp/new session.jsonl",
+			"--session-id",
+			"session-2",
 			"--session-leaf",
 			"leaf-2",
 			"--restart-session",
@@ -49,9 +52,44 @@ describe("exact-session restart", () => {
 	});
 
 	test("omits the leaf selector for an empty session", () => {
-		expect(buildRestartArguments([], "/tmp/session.jsonl", null)).toEqual([
+		expect(buildRestartArguments([], "/tmp/session.jsonl", "session-1", null)).toEqual([
 			"--session",
 			"/tmp/session.jsonl",
+			"--session-id",
+			"session-1",
+			"--restart-session",
+		]);
+	});
+
+	test("drops equal-form selectors and preserves only registered extension flags", () => {
+		expect(
+			buildRestartArguments(
+				[
+					"--session=old.jsonl",
+					"--session-id=wrong",
+					"--session-leaf=old-leaf",
+					"--print=prompt",
+					"--unknown=value",
+					"--plan=review",
+					"--trace",
+					"prompt input",
+					"@prompt.md",
+				],
+				"/tmp/session.jsonl",
+				"session-1",
+				null,
+				[
+					{ name: "plan", type: "string", extensionPath: "/tmp/plan.ts" },
+					{ name: "trace", type: "boolean", extensionPath: "/tmp/trace.ts" },
+				],
+			),
+		).toEqual([
+			"--plan=review",
+			"--trace",
+			"--session",
+			"/tmp/session.jsonl",
+			"--session-id",
+			"session-1",
 			"--restart-session",
 		]);
 	});
