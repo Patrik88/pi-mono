@@ -25,6 +25,8 @@ export interface Args {
 	noSession?: boolean;
 	session?: string;
 	sessionId?: string;
+	sessionLeaf?: string;
+	restartSession?: boolean;
 	fork?: string;
 	sessionDir?: string;
 	models?: string[];
@@ -107,6 +109,10 @@ export function parseArgs(args: string[]): Args {
 			result.session = args[++i];
 		} else if (arg === "--session-id" && i + 1 < args.length) {
 			result.sessionId = args[++i];
+		} else if (arg === "--session-leaf" && i + 1 < args.length) {
+			result.sessionLeaf = args[++i];
+		} else if (arg === "--restart-session") {
+			result.restartSession = true;
 		} else if (arg === "--fork" && i + 1 < args.length) {
 			result.fork = args[++i];
 		} else if (arg === "--session-dir" && i + 1 < args.length) {

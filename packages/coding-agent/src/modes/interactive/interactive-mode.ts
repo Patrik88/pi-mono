@@ -40,6 +40,7 @@ import {
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
+import { buildRestartArguments, formatRecoveryCommand, preflightRestart } from "../../cli/restart-session.ts";
 import {
 	APP_NAME,
 	APP_TITLE,
@@ -49,6 +50,7 @@ import {
 	getDebugLogPath,
 	getDocsPath,
 	getShareViewerUrl,
+	isBunBinary,
 	VERSION,
 } from "../../config.ts";
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.ts";
@@ -70,6 +72,7 @@ import type {
 	ExtensionUIDialogOptions,
 	ExtensionWidgetOptions,
 	ProjectTrustContext,
+	RestartSessionStatus,
 	WorkingIndicatorOptions,
 } from "../../core/extensions/index.ts";
 import { FooterDataProvider, type ReadonlyFooterDataProvider } from "../../core/footer-data-provider.ts";
@@ -312,6 +315,8 @@ export interface InteractiveModeOptions {
 	initialMessages?: string[];
 	/** Force verbose startup (overrides quietStartup setting) */
 	verbose?: boolean;
+	/** Original CLI arguments used to preserve runtime/resource configuration across restart. */
+	launchArgs?: string[];
 }
 
 export class InteractiveMode {
@@ -1667,6 +1672,8 @@ export class InteractiveMode {
 				reload: async () => {
 					await this.handleReloadCommand();
 				},
+				getRestartSessionStatus: () => this.getRestartSessionStatus(),
+				restartSession: async () => this.restartSession(),
 			},
 			shutdownHandler: () => {
 				this.shutdownRequested = true;
@@ -3497,6 +3504,70 @@ export class InteractiveMode {
 	 * repaint the final frame while the process is exiting.
 	 */
 	private isShuttingDown = false;
+
+	private getRestartSessionStatus(): RestartSessionStatus {
+		const sessionFile = this.sessionManager.getSessionFile();
+		if (!this.sessionManager.isPersisted() || !sessionFile) {
+			return {
+				supported: true,
+				state: "blocked",
+				reason: "Restart requires a persisted session. Start Pi without --no-session.",
+			};
+		}
+		if (!this.session.isIdle)
+			return { supported: true, state: "running", reason: "Wait for the current agent run to settle." };
+		if (this.session.pendingMessageCount > 0 || this.compactionQueuedMessages.length > 0) {
+			return { supported: true, state: "blocked", reason: "Restart is blocked while messages are queued." };
+		}
+		const pause = this.session.getPauseStatus();
+		if (pause.state === "pause_requested" || pause.state === "paused") {
+			return {
+				supported: true,
+				state: "blocked",
+				reason: "Cancel or resume the paused continuation before restarting.",
+			};
+		}
+		if (this.bashComponent || this.pendingBashComponents.length > 0 || this.isShuttingDown) {
+			return {
+				supported: true,
+				state: "blocked",
+				reason: "Restart is blocked while transient terminal work is active.",
+			};
+		}
+		return { supported: true, state: "ready" };
+	}
+
+	private async restartSession(): Promise<void> {
+		const status = this.getRestartSessionStatus();
+		if (status.state !== "ready") throw new Error(status.reason ?? "Session restart is not ready.");
+		const sessionFile = this.sessionManager.getSessionFile();
+		if (!sessionFile) throw new Error("Restart requires a persisted session.");
+		const launchArgs = buildRestartArguments(
+			this.options.launchArgs ?? [],
+			sessionFile,
+			this.sessionManager.getLeafId(),
+		);
+		const command = process.execPath;
+		const childArgs = isBunBinary ? launchArgs : [process.argv[1], ...launchArgs];
+		preflightRestart(sessionFile, this.sessionManager.getCwd());
+		this.isShuttingDown = true;
+		this.themeController.disableAutoSync();
+		await this.ui.terminal.drainInput(1000);
+		this.stop();
+		await this.runtimeHost.dispose("restart");
+		try {
+			await new Promise<void>((resolve, reject) => {
+				const child = spawn(command, childArgs, { cwd: this.sessionManager.getCwd(), stdio: "inherit" });
+				child.once("spawn", resolve);
+				child.once("error", reject);
+			});
+			process.exit(0);
+		} catch (error) {
+			console.error(chalk.red(`Failed to restart Pi: ${error instanceof Error ? error.message : String(error)}`));
+			console.error(`Recovery command: ${formatRecoveryCommand(command, childArgs)}`);
+			process.exit(1);
+		}
+	}
 
 	private async shutdown(options?: { fromSignal?: boolean }): Promise<void> {
 		if (this.isShuttingDown) return;

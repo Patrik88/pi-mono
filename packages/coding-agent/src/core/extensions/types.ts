@@ -302,6 +302,12 @@ export interface CompactOptions {
 
 export type AgentPauseState = "idle" | "running" | "pause_requested" | "paused";
 
+export interface RestartSessionStatus {
+	supported: boolean;
+	state: "ready" | "running" | "blocked";
+	reason?: string;
+}
+
 export interface AgentPauseStatus {
 	/** Whether this runtime implements cooperative pause/continue. */
 	supported: boolean;
@@ -402,6 +408,12 @@ export interface ExtensionCommandContext extends ExtensionContext {
 
 	/** Reload extensions, skills, prompts, themes, and context files. */
 	reload(): Promise<void>;
+
+	/** Inspect whether the current persisted TUI session can be restarted safely. */
+	getRestartSessionStatus?(): RestartSessionStatus;
+
+	/** Relaunch this persisted session in a fresh process. Command handlers only. */
+	restartSession?(): Promise<void>;
 }
 
 /**
@@ -586,7 +598,7 @@ export interface ResourcesDiscoverResult {
 export interface SessionStartEvent {
 	type: "session_start";
 	/** Why this session start happened. */
-	reason: "startup" | "reload" | "new" | "resume" | "fork";
+	reason: "startup" | "reload" | "new" | "resume" | "fork" | "restart";
 	/** Previously active session file. Present for "new", "resume", and "fork". */
 	previousSessionFile?: string;
 }
@@ -639,7 +651,7 @@ export interface SessionCompactEvent {
 /** Fired before an extension runtime is torn down due to quit, reload, or session replacement. */
 export interface SessionShutdownEvent {
 	type: "session_shutdown";
-	reason: "quit" | "reload" | "new" | "resume" | "fork";
+	reason: "quit" | "reload" | "new" | "resume" | "fork" | "restart";
 	/** Destination session file when shutting down due to session replacement. */
 	targetSessionFile?: string;
 }
@@ -1726,6 +1738,8 @@ export interface ExtensionCommandContextActions {
 		options?: { withSession?: (ctx: ReplacedSessionContext) => Promise<void> },
 	) => Promise<{ cancelled: boolean }>;
 	reload: () => Promise<void>;
+	getRestartSessionStatus?: () => RestartSessionStatus;
+	restartSession?: () => Promise<void>;
 }
 
 /**
