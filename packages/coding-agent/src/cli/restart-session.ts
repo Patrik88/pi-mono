@@ -1,5 +1,6 @@
 import { accessSync, constants } from "node:fs";
 import { resolve } from "node:path";
+import type { ExtensionFlag } from "../core/extensions/types.ts";
 
 const DROP_FLAGS = new Set([
 	"--continue",
@@ -70,21 +71,30 @@ const PRESERVE_BOOLEAN_FLAGS = new Set([
 export function buildRestartArguments(
 	originalArgs: readonly string[],
 	sessionFile: string,
+	sessionId: string,
 	leafId: string | null,
+	extensionFlags: readonly ExtensionFlag[] = [],
 ): string[] {
 	const result: string[] = [];
+	const registeredFlags = new Map(extensionFlags.map((flag) => [`--${flag.name}`, flag.type]));
 	for (let index = 0; index < originalArgs.length; index += 1) {
 		const arg = originalArgs[index];
-		if (DROP_FLAGS.has(arg)) continue;
-		if (DROP_VALUE_FLAGS.has(arg)) {
-			index += 1;
+		const equalsIndex = arg.indexOf("=");
+		const flag = equalsIndex === -1 ? arg : arg.slice(0, equalsIndex);
+		if (DROP_FLAGS.has(flag)) continue;
+		if (DROP_VALUE_FLAGS.has(flag)) {
+			if (equalsIndex === -1) index += 1;
 			continue;
 		}
-		if (PRESERVE_BOOLEAN_FLAGS.has(arg)) {
+		if (PRESERVE_BOOLEAN_FLAGS.has(flag)) {
 			result.push(arg);
 			continue;
 		}
-		if (PRESERVE_VALUE_FLAGS.has(arg)) {
+		if (PRESERVE_VALUE_FLAGS.has(flag)) {
+			if (equalsIndex !== -1) {
+				result.push(arg);
+				continue;
+			}
 			const value = originalArgs[index + 1];
 			if (value !== undefined) {
 				result.push(arg, value);
@@ -92,20 +102,19 @@ export function buildRestartArguments(
 			}
 			continue;
 		}
-		if (arg.startsWith("--") && arg.includes("=")) {
+		const extensionFlagType = registeredFlags.get(flag);
+		if (extensionFlagType === undefined) continue;
+		if (equalsIndex !== -1 || extensionFlagType === "boolean") {
 			result.push(arg);
 			continue;
 		}
-		if (arg.startsWith("--")) {
-			result.push(arg);
-			const value = originalArgs[index + 1];
-			if (value !== undefined && !value.startsWith("-") && !value.startsWith("@")) {
-				result.push(value);
-				index += 1;
-			}
+		const value = originalArgs[index + 1];
+		if (value !== undefined && !value.startsWith("@")) {
+			result.push(arg, value);
+			index += 1;
 		}
 	}
-	result.push("--session", resolve(sessionFile));
+	result.push("--session", resolve(sessionFile), "--session-id", sessionId);
 	if (leafId !== null) result.push("--session-leaf", leafId);
 	result.push("--restart-session");
 	return result;

@@ -3516,6 +3516,20 @@ export class InteractiveMode {
 		}
 		if (!this.session.isIdle)
 			return { supported: true, state: "running", reason: "Wait for the current agent run to settle." };
+		if (this.session.isCompacting) {
+			return {
+				supported: true,
+				state: "blocked",
+				reason: "Wait for compaction to finish or cancel it before restarting.",
+			};
+		}
+		if (this.session.isRetrying || this.session.retryAttempt > 0) {
+			return {
+				supported: true,
+				state: "blocked",
+				reason: "Wait for automatic retry to finish or cancel it before restarting.",
+			};
+		}
 		if (this.session.pendingMessageCount > 0 || this.compactionQueuedMessages.length > 0) {
 			return { supported: true, state: "blocked", reason: "Restart is blocked while messages are queued." };
 		}
@@ -3542,10 +3556,15 @@ export class InteractiveMode {
 		if (status.state !== "ready") throw new Error(status.reason ?? "Session restart is not ready.");
 		const sessionFile = this.sessionManager.getSessionFile();
 		if (!sessionFile) throw new Error("Restart requires a persisted session.");
+		const extensionFlags = this.session.resourceLoader
+			.getExtensions()
+			.extensions.flatMap((extension) => Array.from(extension.flags.values()));
 		const launchArgs = buildRestartArguments(
 			this.options.launchArgs ?? [],
 			sessionFile,
+			this.sessionManager.getSessionId(),
 			this.sessionManager.getLeafId(),
+			extensionFlags,
 		);
 		const command = process.execPath;
 		const childArgs = isBunBinary ? launchArgs : [process.argv[1], ...launchArgs];
@@ -3556,12 +3575,17 @@ export class InteractiveMode {
 		this.stop();
 		await this.runtimeHost.dispose("restart");
 		try {
-			await new Promise<void>((resolve, reject) => {
+			const exit = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
 				const child = spawn(command, childArgs, { cwd: this.sessionManager.getCwd(), stdio: "inherit" });
-				child.once("spawn", resolve);
 				child.once("error", reject);
+				child.once("exit", (code, signal) => resolve({ code, signal }));
 			});
-			process.exit(0);
+			if (exit.signal) process.kill(process.pid, exit.signal);
+			if (exit.code !== 0) {
+				console.error(chalk.red(`Restarted Pi exited with status ${exit.code ?? "unknown"}.`));
+				console.error(`Recovery command: ${formatRecoveryCommand(command, childArgs)}`);
+			}
+			process.exit(exit.code ?? 1);
 		} catch (error) {
 			console.error(chalk.red(`Failed to restart Pi: ${error instanceof Error ? error.message : String(error)}`));
 			console.error(`Recovery command: ${formatRecoveryCommand(command, childArgs)}`);
