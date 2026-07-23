@@ -218,6 +218,13 @@ function validateForkFlags(parsed: Args): void {
 	}
 }
 
+function validateSessionLeafFlags(parsed: Args): void {
+	if (parsed.sessionLeaf !== undefined && parsed.session === undefined) {
+		console.error(chalk.red("Error: --session-leaf requires --session"));
+		process.exit(1);
+	}
+}
+
 function validateSessionIdFlags(parsed: Args): void {
 	if (parsed.sessionId === undefined) return;
 
@@ -550,6 +557,7 @@ export async function main(args: string[], options?: MainOptions) {
 
 	validateForkFlags(parsed);
 	validateSessionIdFlags(parsed);
+	validateSessionLeafFlags(parsed);
 
 	// Run migrations (pass cwd for project-local migrations)
 	const { migratedAuthProviders: migratedProviders, deprecationWarnings } = runMigrations(cwd);
@@ -586,6 +594,18 @@ export async function main(args: string[], options?: MainOptions) {
 			sessionManager = SessionManager.open(missingSessionCwdIssue.sessionFile!, sessionDir, selectedCwd);
 		} else {
 			console.error(chalk.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
+			process.exit(1);
+		}
+	}
+	if (parsed.sessionLeaf !== undefined) {
+		try {
+			sessionManager.branch(parsed.sessionLeaf);
+		} catch {
+			console.error(
+				chalk.red(
+					`Error: Session leaf '${parsed.sessionLeaf}' does not exist in ${sessionManager.getSessionFile()}`,
+				),
+			);
 			process.exit(1);
 		}
 	}
@@ -742,6 +762,7 @@ export async function main(args: string[], options?: MainOptions) {
 		cwd: sessionManager.getCwd(),
 		agentDir,
 		sessionManager,
+		sessionStartEvent: parsed.restartSession ? { type: "session_start", reason: "restart" } : undefined,
 	});
 	time("createAgentSessionRuntime");
 	const { services, session, modelFallbackMessage } = runtime;
@@ -820,6 +841,7 @@ export async function main(args: string[], options?: MainOptions) {
 			initialImages,
 			initialMessages: parsed.messages,
 			verbose: parsed.verbose,
+			launchArgs: args,
 		});
 		if (startupBenchmark) {
 			await interactiveMode.init();

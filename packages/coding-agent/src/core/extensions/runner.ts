@@ -53,6 +53,7 @@ import type {
 	ResolvedCommand,
 	ResourcesDiscoverEvent,
 	ResourcesDiscoverResult,
+	RestartSessionStatus,
 	SessionBeforeCompactResult,
 	SessionBeforeForkResult,
 	SessionBeforeSwitchResult,
@@ -305,6 +306,14 @@ export class ExtensionRunner {
 	private navigateTreeHandler: NavigateTreeHandler = async () => ({ cancelled: false });
 	private switchSessionHandler: SwitchSessionHandler = async () => ({ cancelled: false });
 	private reloadHandler: ReloadHandler = async () => {};
+	private getRestartSessionStatusHandler: () => RestartSessionStatus = () => ({
+		supported: false,
+		state: "blocked",
+		reason: "Process restart is unavailable in this mode.",
+	});
+	private restartSessionHandler: () => Promise<void> = async () => {
+		throw new Error("Process restart is unavailable in this mode.");
+	};
 	private shutdownHandler: ShutdownHandler = () => {};
 	private shortcutDiagnostics: ResourceDiagnostic[] = [];
 	private commandDiagnostics: ResourceDiagnostic[] = [];
@@ -447,6 +456,8 @@ export class ExtensionRunner {
 			this.navigateTreeHandler = actions.navigateTree;
 			this.switchSessionHandler = actions.switchSession;
 			this.reloadHandler = actions.reload;
+			this.getRestartSessionStatusHandler = actions.getRestartSessionStatus ?? this.getRestartSessionStatusHandler;
+			this.restartSessionHandler = actions.restartSession ?? this.restartSessionHandler;
 			return;
 		}
 
@@ -824,6 +835,14 @@ export class ExtensionRunner {
 		context.reload = () => {
 			this.assertActive();
 			return this.reloadHandler();
+		};
+		context.getRestartSessionStatus = () => {
+			this.assertActive();
+			return this.getRestartSessionStatusHandler();
+		};
+		context.restartSession = () => {
+			this.assertActive();
+			return this.restartSessionHandler();
 		};
 		return context;
 	}
