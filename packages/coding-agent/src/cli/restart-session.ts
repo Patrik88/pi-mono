@@ -1,3 +1,4 @@
+import { type ChildProcess, type SpawnOptions, spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { resolve } from "node:path";
 import type { ExtensionFlag } from "../core/extensions/types.ts";
@@ -123,6 +124,26 @@ export function buildRestartArguments(
 export function preflightRestart(sessionFile: string, cwd: string): void {
 	accessSync(resolve(sessionFile), constants.R_OK);
 	accessSync(resolve(cwd), constants.R_OK);
+}
+
+export interface ReplacementExit {
+	code: number | null;
+	signal: NodeJS.Signals | null;
+}
+
+export type SpawnReplacement = (command: string, args: readonly string[], options: SpawnOptions) => ChildProcess;
+
+export function superviseReplacementProcess(
+	command: string,
+	args: readonly string[],
+	cwd: string,
+	spawnReplacement: SpawnReplacement = spawn,
+): Promise<ReplacementExit> {
+	return new Promise((resolveExit, reject) => {
+		const child = spawnReplacement(command, args, { cwd, stdio: "inherit" });
+		child.once("error", reject);
+		child.once("exit", (code, signal) => resolveExit({ code, signal }));
+	});
 }
 
 export function formatRecoveryCommand(command: string, args: readonly string[]): string {

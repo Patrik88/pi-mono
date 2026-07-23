@@ -40,7 +40,12 @@ import {
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
-import { buildRestartArguments, formatRecoveryCommand, preflightRestart } from "../../cli/restart-session.ts";
+import {
+	buildRestartArguments,
+	formatRecoveryCommand,
+	preflightRestart,
+	superviseReplacementProcess,
+} from "../../cli/restart-session.ts";
 import {
 	APP_NAME,
 	APP_TITLE,
@@ -3575,11 +3580,7 @@ export class InteractiveMode {
 		this.stop();
 		await this.runtimeHost.dispose("restart");
 		try {
-			const exit = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-				const child = spawn(command, childArgs, { cwd: this.sessionManager.getCwd(), stdio: "inherit" });
-				child.once("error", reject);
-				child.once("exit", (code, signal) => resolve({ code, signal }));
-			});
+			const exit = await superviseReplacementProcess(command, childArgs, this.sessionManager.getCwd());
 			if (exit.signal) process.kill(process.pid, exit.signal);
 			if (exit.code !== 0) {
 				console.error(chalk.red(`Restarted Pi exited with status ${exit.code ?? "unknown"}.`));
