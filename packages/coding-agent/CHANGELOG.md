@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Fixed exact-session restart to retain terminal foreground ownership, verify the persisted session identity before startup, reject transient compaction/retry states, and provide deterministic recovery guidance.
 - Fixed prompt-template defaults for all arguments (`${@:-default}` and `${ARGUMENTS:-default}`) ([#6695](https://github.com/earendil-works/pi/issues/6695)).
 - Fixed obsolete custom UI, custom tool, and custom editor examples in the extension documentation ([#6735](https://github.com/earendil-works/pi/issues/6735)).
 - Fixed Kimi Coding sessions to show API-equivalent implied costs with the subscription indicator.
