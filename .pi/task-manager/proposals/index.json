@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-22T14:16:20.067Z",
+  "updatedAt": "2026-07-30T15:09:42.583Z",
   "proposals": [
     {
       "proposalId": "P001",
@@ -13,7 +13,21 @@
       "operationCount": 2,
       "warningCount": 0,
       "decisionItemCount": 0,
-      "path": "/Users/pg/Sites/tools/pi-mono-pg-private-tool-display-modes/.pi/task-manager/proposals/archive/P001.json",
+      "path": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/task-manager/proposals/archive/P001.json",
+      "archived": true
+    },
+    {
+      "proposalId": "P002",
+      "proposalType": "manual",
+      "title": "Create 2 tasks",
+      "createdAt": "2026-07-30T15:09:42.562Z",
+      "createdBy": "session:019f7a90-7375-71ce-b63b-c7f3fb67f33f",
+      "lifecycleStatus": "archived",
+      "targetPlanPath": ".pi/tasks.json",
+      "operationCount": 2,
+      "warningCount": 0,
+      "decisionItemCount": 0,
+      "path": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/task-manager/proposals/archive/P002.json",
       "archived": true
     }
   ]

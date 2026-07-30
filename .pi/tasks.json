@@ -758,6 +758,205 @@
         ],
         "note": "Runtime behavior, settings, keybindings, extension compatibility, and changelog documentation updated in the implementation change."
       }
+    },
+    {
+      "id": "T002",
+      "title": "Reproduce and localize orphan function_call_output after Claude-to-Codex model switch",
+      "status": "todo",
+      "readiness": "scoped",
+      "type": "bug-investigation",
+      "priority": "critical",
+      "risk": "high",
+      "role": "worker",
+      "contextView": "worker",
+      "description": "Reproduce the verified persisted-session incident where a healthy claude-bridge assistant toolCall and matching aborted/error toolResult were present in raw Pi history, but the subsequent OpenAI Codex request was rejected with `No tool call found for function call output with call_id toolu_01PLWRr5aidacJz7F8PQzYzg.` The clean four-message `convertResponsesMessages` path preserves the pair, so diagnosis must reconstruct the actual effective request pipeline and delta-debug the surrounding session state before selecting a fix layer. Determine whether loss occurs in SessionManager/buildSessionContext, extension context hooks, transformMessages, OpenAI Responses conversion, Codex request continuation/state, or remote validation. Do not patch around the symptom before the first divergent representation is proven.",
+      "requiredReferences": [
+        {
+          "path": "packages/ai/src/api/transform-messages.ts",
+          "reason": "Cross-provider thinking/tool-ID transformation and tool-span synthesis/skip behavior.",
+          "embed": true
+        },
+        {
+          "path": "packages/ai/src/api/openai-responses-shared.ts",
+          "reason": "OpenAI Responses function_call/function_call_output conversion.",
+          "embed": true
+        },
+        {
+          "path": "packages/coding-agent/src/core/session-manager.ts",
+          "reason": "Canonical session context reconstruction and compaction/branch boundary.",
+          "embed": false
+        },
+        {
+          "path": "packages/agent/src/harness/session/session.ts",
+          "reason": "Additional buildSessionContext implementation/surface; determine whether it participates in this runtime path.",
+          "embed": false
+        }
+      ],
+      "suggestedReferences": [
+        {
+          "path": "packages/ai/test/openai-responses-foreign-toolcall-id.test.ts",
+          "reason": "Existing foreign tool-call ID coverage and gap comparison."
+        },
+        {
+          "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",
+          "reason": "Existing Responses tool-result edge coverage."
+        }
+      ],
+      "likelyFiles": [
+        "packages/ai/test/tool-span-coherence-diagnosis.test.ts"
+      ],
+      "sourceRefs": [
+        {
+          "path": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-proj-pi-extensions--/2026-07-30T13-41-37-923Z_019fb342-5a03-7945-b0dc-55df48e6ca92.jsonl",
+          "reason": "Verified incident: healthy e:e965448f toolUse, matching e:0eb3965f error result, and repeated Codex errors e:634d2079/e:da744c84/e:adcc688e."
+        }
+      ],
+      "acceptanceCriteria": [
+        "A descriptor-safe synthetic fixture reconstructs the consequential message/control sequence without reading the personal source session during normal test execution.",
+        "The investigation records the exact message/item inventory at each boundary: persisted active branch, buildSessionContext result, post-context-hook messages, transformMessages result, Responses input items, and any continuation/state metadata supplied to Codex.",
+        "Delta-debugging identifies the first boundary where the matching toolCall disappears, changes identity, is invalidated, or becomes unrecognized while its toolResult remains; if every local boundary preserves the pair, the task records bounded evidence for a remote Codex validation/state hypothesis rather than claiming a local projection bug.",
+        "The existing clean-path case remains explicit: a foreign Opus toolUse plus matching isError toolResult converts to paired function_call/function_call_output items with identical call_id.",
+        "The investigation separately records the three relevant artifact classes without conflation: real tool-span orphaning, empty error assistant shells from failed retries, and the legacy Bridge zero-block normal-stop shell.",
+        "No live paid-provider request is required. Any optional real-provider confirmation is separately bounded and explicitly authorized by Patrik before execution.",
+        "The task ends with an evidence-backed owner/fix recommendation and a minimal deterministic regression target for T003; no speculative production fix is committed."
+      ],
+      "validation": [
+        {
+          "kind": "command",
+          "command": "npm run check",
+          "cwd": "{repo}",
+          "timeoutSeconds": 600,
+          "required": true,
+          "noninteractive": true
+        },
+        {
+          "kind": "manual",
+          "description": "Run the focused offline reproduction/delta-debug fixture and retain body-free item-type/call-id evidence.",
+          "required": true,
+          "noninteractive": true
+        }
+      ],
+      "notes": "Before implementation, assign a dedicated topic worktree/branch per AGENTS.FORK.md; do not execute this task directly in stable main or pg/daily.,Likely upstream-capable platform correctness issue. Choose pg/core from main only after diagnosis shows the bug exists on upstream parity; otherwise use pg/ext from pg/daily.\n\n[2026-07-30T15:10:09.938Z] Bind context hydration and future diagnosis work to the dedicated topic worktree, not the caller cwd.\n\n[2026-07-30T15:12:16.037Z] Diagnosis may add only a deterministic offline regression/diagnostic fixture; production source remains inspect-only until the first divergent boundary is proven.\n\n[2026-07-30T15:13:03.681Z] Diagnosis contract is now bounded: offline fixture only, production source read-only, personal sessions do-not-edit, and T003 owns any implementation fix.",
+      "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+      "gitRepo": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+      "expectedCreates": [
+        "packages/ai/test/tool-span-coherence-diagnosis.test.ts"
+      ],
+      "produces": [
+        {
+          "id": "tool-span-orphan-diagnosis",
+          "kind": "test-fixture",
+          "path": "packages/ai/test/tool-span-coherence-diagnosis.test.ts",
+          "description": "Deterministic offline fixture and boundary evidence that localizes the first call/result divergence or proves all local boundaries pair correctly."
+        }
+      ],
+      "protectedPaths": [
+        {
+          "path": "/Users/pg/.pi/agent/sessions/**",
+          "policy": "do-not-edit",
+          "reason": "The incident sessions are provenance only; diagnosis must use descriptor-safe synthetic fixtures and never rewrite persisted user sessions."
+        },
+        {
+          "path": "packages/ai/src/**",
+          "policy": "read-only",
+          "reason": "T002 is diagnosis-only. Production source may be inspected but not modified before the first divergent boundary is proven and T003 owns the fix."
+        },
+        {
+          "path": "packages/coding-agent/src/**",
+          "policy": "read-only",
+          "reason": "T002 may inspect canonical context construction but must not patch it speculatively."
+        }
+      ]
+    },
+    {
+      "id": "T003",
+      "title": "Enforce atomic tool-call/result spans across transformed provider history",
+      "status": "todo",
+      "readiness": "draft",
+      "type": "bug",
+      "priority": "critical",
+      "risk": "high",
+      "role": "worker",
+      "contextView": "worker",
+      "description": "After T002 identifies the responsible boundary, harden Pi's canonical/cross-provider message transformation so a provider request never contains a tool/function result without its matching call and never contains duplicate synthetic plus real results for the same call. Preserve genuine error tool results, exact call/result identity, chronology, and provider-specific replay constraints. Prefer a single canonical coherent-span invariant over provider-specific symptom repair.",
+      "dependencies": [
+        {
+          "taskId": "T002",
+          "type": "blocks",
+          "required": true
+        }
+      ],
+      "requiredReferences": [
+        {
+          "path": "packages/ai/src/api/transform-messages.ts",
+          "reason": "Current second-pass skip/synthetic-result logic and tool ID transformation owner.",
+          "embed": true
+        },
+        {
+          "path": "packages/ai/src/api/openai-responses-shared.ts",
+          "reason": "OpenAI Responses pairing contract and request item conversion.",
+          "embed": true
+        }
+      ],
+      "suggestedReferences": [
+        {
+          "path": "packages/ai/test/openai-responses-foreign-toolcall-id.test.ts",
+          "reason": "Existing cross-provider call-ID regressions."
+        },
+        {
+          "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",
+          "reason": "Existing empty/error result coverage."
+        }
+      ],
+      "likelyFiles": [
+        "packages/ai/src/api/transform-messages.ts",
+        "packages/ai/src/api/openai-responses-shared.ts",
+        "packages/ai/test/transform-messages*.test.ts",
+        "packages/ai/test/openai-responses-foreign-toolcall-id.test.ts",
+        "packages/ai/test/openai-responses-empty-tool-result.test.ts",
+        "packages/ai/CHANGELOG.md"
+      ],
+      "sourceRefs": [
+        {
+          "path": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-proj-pi-extensions--/2026-07-30T13-41-37-923Z_019fb342-5a03-7945-b0dc-55df48e6ca92.jsonl",
+          "reason": "Verified cross-provider incident and repeated orphan function_call_output failures."
+        }
+      ],
+      "reviewPolicy": {
+        "required": true,
+        "role": "reviewer",
+        "transport": "subagent",
+        "maxRounds": 2
+      },
+      "acceptanceCriteria": [
+        "Every emitted toolResult/function_call_output has exactly one earlier matching toolCall/function_call under the target provider's identity rules, or the whole unsafe span/request is refused before network mutation with a typed actionable error.",
+        "Skipping an error/aborted assistant cannot leave its tool results in output; preserving a real result cannot drop its call.",
+        "A user interruption that triggers a synthetic `No result provided` cannot later produce duplicate synthetic and real results for the same call ID; deterministic precedence is documented and tested.",
+        "Foreign provider tool-call IDs remain pair-preserving after normalization, including IDs with and without OpenAI Responses item-id suffixes.",
+        "Genuine error results such as `Command aborted` remain error results and are not rewritten into successful or fabricated content.",
+        "Tests cover assistant error/aborted with toolCall, real result before/after user boundary, duplicate result, missing call, multiple parallel calls, model switch, and the exact T002 regression.",
+        "Foreign-thinking handling is not silently changed as a side effect; any policy change to textification/exclusion requires a separate accepted decision.",
+        "The implementation is developed in the correct dedicated pg/core or pg/ext worktree chosen from T002 evidence, passes targeted packages/ai tests and npm run check, and updates the applicable changelog/docs."
+      ],
+      "validation": [
+        {
+          "kind": "command",
+          "command": "npm run check",
+          "cwd": "{repo}",
+          "timeoutSeconds": 600,
+          "required": true,
+          "noninteractive": true
+        },
+        {
+          "kind": "manual",
+          "description": "Run focused packages/ai transform/Responses regressions, including the exact minimized T002 case.",
+          "required": true,
+          "noninteractive": true
+        }
+      ],
+      "notes": "Blocked on T002 by design. Do not implement from the current hypothesis alone.,If upstream parity reproduces the bug, implement on a pg/core branch from main and keep the diff upstream-clean. Otherwise use a pg/ext branch from pg/daily.\n\n[2026-07-30T15:10:36.919Z] Bind context hydration to the dedicated diagnosis worktree; T003 must still choose pg/core vs pg/ext implementation branch from T002 evidence before editing code.",
+      "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+      "gitRepo": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks"
     }
   ],
   "proposalApplications": [
@@ -767,7 +966,14 @@
       "appliedAt": "2026-07-22T14:16:20.053Z",
       "appliedBy": "session:019f89f8-6ed4-716b-bbc9-85c2df00b667",
       "operationCount": 2
+    },
+    {
+      "proposalId": "P002",
+      "proposalType": "manual",
+      "appliedAt": "2026-07-30T15:09:42.572Z",
+      "appliedBy": "session:019f7a90-7375-71ce-b63b-c7f3fb67f33f",
+      "operationCount": 2
     }
   ],
-  "updatedAt": "2026-07-22T15:05:40.439Z"
+  "updatedAt": "2026-07-30T15:13:03.685Z"
 }
