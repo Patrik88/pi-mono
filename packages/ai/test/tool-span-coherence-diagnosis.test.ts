@@ -100,16 +100,21 @@ function buildFixture(): SessionEntry[] {
 		messageEntry("user", null, { role: "user", content: "Inspect the bounded history.", timestamp: BASE_TIME - 1 }),
 		messageEntry("tool-call", "user", toolCall),
 		messageEntry("tool-result", "tool-call", abortedResult),
+		messageEntry("bridge-zero-block", "tool-result", bridgeAssistant([], "stop")),
 		{
 			type: "model_change",
 			id: "model-change",
-			parentId: "tool-result",
+			parentId: "bridge-zero-block",
 			timestamp: new Date(BASE_TIME + 2).toISOString(),
 			provider: "openai-codex",
 			modelId: "gpt-5.5",
 		},
-		messageEntry("failed-codex-retry", "model-change", codexAssistant("error")),
-		messageEntry("bridge-zero-block", "failed-codex-retry", bridgeAssistant([], "stop")),
+		messageEntry("trigger-user", "model-change", {
+			role: "user",
+			content: "Continue with Codex.",
+			timestamp: BASE_TIME + 3,
+		}),
+		messageEntry("failed-codex-retry", "trigger-user", codexAssistant("error")),
 	];
 }
 
@@ -155,6 +160,15 @@ describe("Claude-to-Codex orphan function_call_output diagnosis", () => {
 		} finally {
 			rmSync(tempDir, { recursive: true, force: true });
 		}
+
+		expect(describeMessages(sessionContext.messages as Message[])).toEqual([
+			"user",
+			`assistant:claude-bridge/claude-opus-4-6:toolUse:[text,toolCall:${INCIDENT_CALL_ID}]`,
+			`toolResult:${INCIDENT_CALL_ID}:error=true`,
+			"assistant:claude-bridge/claude-opus-4-6:stop:[]",
+			"user",
+			"assistant:openai-codex/gpt-5.5:error:[]",
+		]);
 
 		const llmMessages = convertToLlm(postContextHook);
 		const transformed = transformMessages(llmMessages, model, (id) => id);
@@ -236,9 +250,10 @@ describe("Claude-to-Codex orphan function_call_output diagnosis", () => {
 			"user",
 			`assistant:claude-bridge/claude-opus-4-6:toolUse:[text,toolCall:${INCIDENT_CALL_ID}]`,
 			`toolResult:${INCIDENT_CALL_ID}:error=true`,
-			"model_change:openai-codex/gpt-5.5",
-			"assistant:openai-codex/gpt-5.5:error:[]",
 			"assistant:claude-bridge/claude-opus-4-6:stop:[]",
+			"model_change:openai-codex/gpt-5.5",
+			"user",
+			"assistant:openai-codex/gpt-5.5:error:[]",
 		]);
 		expect(describeMessages(postContextHook)).toEqual(describeMessages(sessionContext.messages as Message[]));
 		expect(describeMessages(transformed)).toEqual([
@@ -246,12 +261,14 @@ describe("Claude-to-Codex orphan function_call_output diagnosis", () => {
 			`assistant:claude-bridge/claude-opus-4-6:toolUse:[text,toolCall:${INCIDENT_CALL_ID}]`,
 			`toolResult:${INCIDENT_CALL_ID}:error=true`,
 			"assistant:claude-bridge/claude-opus-4-6:stop:[]",
+			"user",
 		]);
 		expect(describeResponsesInput(responsesInput)).toEqual([
 			"user",
 			"assistant",
 			`function_call:${INCIDENT_CALL_ID}`,
 			`function_call_output:${INCIDENT_CALL_ID}`,
+			"user",
 		]);
 		expect(sentBodies).toHaveLength(2);
 		expect(sentBodies[0]?.previous_response_id).toBeUndefined();
@@ -260,6 +277,7 @@ describe("Claude-to-Codex orphan function_call_output diagnosis", () => {
 			"assistant",
 			`function_call:${INCIDENT_CALL_ID}`,
 			`function_call_output:${INCIDENT_CALL_ID}`,
+			"user",
 		]);
 		expect(sentBodies[1]?.previous_response_id).toBe("resp_1");
 		expect(describeResponsesInput(sentBodies[1]?.input ?? [])).toEqual(["user"]);
