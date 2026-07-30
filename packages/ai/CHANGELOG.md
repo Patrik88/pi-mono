@@ -34,6 +34,7 @@
 
 ### Fixed
 
+- Fixed OpenAI Codex cached WebSocket continuations to retry once with coherent full context when the server loses the referenced tool-call state.
 - Fixed OpenAI Codex cached WebSocket continuations after grammar tool calls to send only the real tool-result delta.
 - Fixed constrained tool sampling across Google, Amazon Bedrock, Mistral, and Azure OpenAI Responses adapters, including model-aware strict-tool capabilities, grammar configuration validation, and malformed grammar-call replay errors.
 - Fixed `cacheRetention: "none"` to disable implicit prompt-cache writes for supported OpenAI models and session-based caching for OpenAI Codex ([#6618](https://github.com/earendil-works/pi/pull/6618) by [@tmustier](https://github.com/tmustier)).

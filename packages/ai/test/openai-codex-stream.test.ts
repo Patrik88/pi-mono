@@ -2041,6 +2041,235 @@ describe("openai-codex streaming", () => {
 		});
 	});
 
+	it("retries an orphaned cached function-call output once with the coherent full context", async () => {
+		const token = mockToken();
+		const sessionId = "orphaned-tool-call-continuation";
+		const incidentCallId = "toolu_01PLWRr5aidacJz7F8PQzYzg";
+		const sentBodies: Array<{ input: Array<Record<string, unknown>>; previous_response_id?: string }> = [];
+		let connections = 0;
+
+		class MockWebSocket {
+			static OPEN = 1;
+			static CLOSED = 3;
+			readyState = MockWebSocket.OPEN;
+			private listeners = new Map<string, Set<(event: unknown) => void>>();
+
+			constructor(_url: string, _protocols?: string | string[] | { headers?: Record<string, string> }) {
+				connections++;
+				queueMicrotask(() => this.dispatch("open", {}));
+			}
+
+			addEventListener(type: string, listener: (event: unknown) => void): void {
+				const listeners = this.listeners.get(type) ?? new Set();
+				listeners.add(listener);
+				this.listeners.set(type, listeners);
+			}
+
+			removeEventListener(type: string, listener: (event: unknown) => void): void {
+				this.listeners.get(type)?.delete(listener);
+			}
+
+			send(data: string): void {
+				sentBodies.push(JSON.parse(data));
+				if (sentBodies.length === 2) {
+					queueMicrotask(() =>
+						this.dispatch("message", {
+							data: JSON.stringify({
+								type: "response.failed",
+								response: {
+									error: {
+										message: `No tool call found for function call output with call_id ${incidentCallId}.`,
+									},
+								},
+							}),
+						}),
+					);
+					return;
+				}
+
+				const responseId = sentBodies.length === 1 ? "resp_1" : "resp_2";
+				const outputEvents =
+					sentBodies.length === 1
+						? [
+								{
+									type: "response.output_item.added",
+									item: {
+										type: "function_call",
+										id: "fc_incident",
+										call_id: incidentCallId,
+										name: "bash",
+										arguments: "",
+									},
+								},
+								{
+									type: "response.output_item.done",
+									item: {
+										type: "function_call",
+										id: "fc_incident",
+										call_id: incidentCallId,
+										name: "bash",
+										arguments: '{"command":"bounded fixture"}',
+									},
+								},
+							]
+						: [];
+				queueMicrotask(() => {
+					for (const event of [
+						{ type: "response.created", response: { id: responseId } },
+						...outputEvents,
+						{
+							type: "response.completed",
+							response: {
+								id: responseId,
+								status: "completed",
+								usage: { input_tokens: 5, output_tokens: 3, total_tokens: 8 },
+							},
+						},
+					]) {
+						this.dispatch("message", { data: JSON.stringify(event) });
+					}
+				});
+			}
+
+			close(): void {
+				this.readyState = MockWebSocket.CLOSED;
+			}
+
+			private dispatch(type: string, event: unknown): void {
+				for (const listener of this.listeners.get(type) ?? []) listener(event);
+			}
+		}
+
+		vi.stubGlobal("WebSocket", MockWebSocket);
+		const model: Model<"openai-codex-responses"> = {
+			id: "gpt-5.5",
+			name: "GPT-5.5",
+			api: "openai-codex-responses",
+			provider: "openai-codex",
+			baseUrl: "https://chatgpt.com/backend-api",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 400000,
+			maxTokens: 128000,
+		};
+		const firstContext: Context = {
+			systemPrompt: "Keep the investigation bounded.",
+			messages: [{ role: "user", content: "Collect the remaining entries.", timestamp: 1 }],
+		};
+		const first = await streamOpenAICodexResponses(model, firstContext, {
+			apiKey: token,
+			sessionId,
+			transport: "websocket-cached",
+		}).result();
+		const secondContext: Context = {
+			...firstContext,
+			messages: [
+				...firstContext.messages,
+				first,
+				{
+					role: "toolResult",
+					toolCallId: `${incidentCallId}|fc_incident`,
+					toolName: "bash",
+					content: [{ type: "text", text: "Command aborted" }],
+					isError: true,
+					timestamp: 2,
+				},
+				{ role: "user", content: "Continue with Codex.", timestamp: 3 },
+			],
+		};
+		const second = await streamOpenAICodexResponses(model, secondContext, {
+			apiKey: token,
+			sessionId,
+			transport: "websocket-cached",
+		}).result();
+
+		expect(second.stopReason).toBe("stop");
+		expect(connections).toBe(2);
+		expect(sentBodies).toHaveLength(3);
+		expect(sentBodies[1].previous_response_id).toBe("resp_1");
+		expect(sentBodies[1].input).toEqual([
+			{ type: "function_call_output", call_id: incidentCallId, output: "Command aborted" },
+			{ role: "user", content: [{ type: "input_text", text: "Continue with Codex." }] },
+		]);
+		expect(sentBodies[2].previous_response_id).toBeUndefined();
+		const retrySpan = sentBodies[2].input.filter(
+			(item) => item.type === "function_call" || item.type === "function_call_output",
+		);
+		expect(retrySpan).toEqual([
+			{
+				type: "function_call",
+				id: "fc_incident",
+				call_id: incidentCallId,
+				name: "bash",
+				arguments: '{"command":"bounded fixture"}',
+			},
+			{ type: "function_call_output", call_id: incidentCallId, output: "Command aborted" },
+		]);
+	});
+
+	it("does not retry an orphan tool-call error from a full-context websocket request", async () => {
+		const sentBodies: Array<{ previous_response_id?: string }> = [];
+		class MockWebSocket {
+			static OPEN = 1;
+			readyState = MockWebSocket.OPEN;
+			private listeners = new Map<string, Set<(event: unknown) => void>>();
+			constructor() {
+				queueMicrotask(() => this.dispatch("open", {}));
+			}
+			addEventListener(type: string, listener: (event: unknown) => void): void {
+				const listeners = this.listeners.get(type) ?? new Set();
+				listeners.add(listener);
+				this.listeners.set(type, listeners);
+			}
+			removeEventListener(type: string, listener: (event: unknown) => void): void {
+				this.listeners.get(type)?.delete(listener);
+			}
+			send(data: string): void {
+				sentBodies.push(JSON.parse(data));
+				queueMicrotask(() =>
+					this.dispatch("message", {
+						data: JSON.stringify({
+							type: "error",
+							error: {
+								message: "No tool call found for function call output with call_id toolu_full_context.",
+							},
+						}),
+					}),
+				);
+			}
+			close(): void {}
+			private dispatch(type: string, event: unknown): void {
+				for (const listener of this.listeners.get(type) ?? []) listener(event);
+			}
+		}
+		vi.stubGlobal("WebSocket", MockWebSocket);
+		const model: Model<"openai-codex-responses"> = {
+			id: "gpt-5.5",
+			name: "GPT-5.5",
+			api: "openai-codex-responses",
+			provider: "openai-codex",
+			baseUrl: "https://chatgpt.com/backend-api",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 400000,
+			maxTokens: 128000,
+		};
+		const result = await streamOpenAICodexResponses(
+			model,
+			{ messages: [{ role: "user", content: "Start fresh", timestamp: 1 }] },
+			{ apiKey: mockToken(), sessionId: "full-context-orphan", transport: "websocket-cached" },
+		).result();
+
+		expect(result.stopReason).toBe("error");
+		expect(result.errorMessage).toContain(
+			"No tool call found for function call output with call_id toolu_full_context.",
+		);
+		expect(sentBodies).toHaveLength(1);
+		expect(sentBodies[0].previous_response_id).toBeUndefined();
+	});
+
 	it.each(["websocket", "sse"] as const)(
 		"recovers a missing cached websocket continuation via %s",
 		async (recoveryTransport) => {

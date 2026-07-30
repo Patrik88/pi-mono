@@ -334,8 +334,8 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 					} catch (error) {
 						const aborted = options?.signal?.aborted;
 						const connectionLimitBeforeStart = !websocketStarted && isWebSocketConnectionLimitReachedError(error);
-						const previousResponseNotFound = isPreviousResponseNotFoundError(error);
-						if (!aborted && previousResponseNotFound && !retriedMissingWebSocketContinuation) {
+						const staleCachedContinuation = error instanceof StaleCachedWebSocketContinuationError;
+						if (!aborted && staleCachedContinuation && !retriedMissingWebSocketContinuation) {
 							retriedMissingWebSocketContinuation = true;
 							continue;
 						}
@@ -680,6 +680,13 @@ class CodexProtocolError extends Error {
 	}
 }
 
+class StaleCachedWebSocketContinuationError extends Error {
+	constructor(cause: CodexApiError) {
+		super(cause.message, { cause });
+		this.name = "StaleCachedWebSocketContinuationError";
+	}
+}
+
 function isCodexNonTransportError(error: unknown): boolean {
 	return error instanceof CodexApiError || error instanceof CodexProtocolError;
 }
@@ -688,8 +695,15 @@ function isWebSocketConnectionLimitReachedError(error: unknown): boolean {
 	return error instanceof CodexApiError && error.code === WEBSOCKET_CONNECTION_LIMIT_REACHED_CODE;
 }
 
-function isPreviousResponseNotFoundError(error: unknown): boolean {
+function isPreviousResponseNotFoundError(error: unknown): error is CodexApiError {
 	return error instanceof CodexApiError && error.code === PREVIOUS_RESPONSE_NOT_FOUND_CODE;
+}
+
+function isMissingToolCallContinuationError(error: unknown): error is CodexApiError {
+	return (
+		error instanceof CodexApiError &&
+		/^No tool call found for function call output with call_id \S+\.?$/.test(error.message)
+	);
 }
 
 function extractCodexEventError(event: Record<string, unknown>): { code?: string; message?: string } {
@@ -1507,6 +1521,12 @@ async function processWebSocketStream(
 			entry.continuation = undefined;
 		}
 		keepConnection = false;
+		if (
+			requestBody.previous_response_id &&
+			(isPreviousResponseNotFoundError(error) || isMissingToolCallContinuationError(error))
+		) {
+			throw new StaleCachedWebSocketContinuationError(error);
+		}
 		throw error;
 	} finally {
 		release({ keep: keepConnection });
