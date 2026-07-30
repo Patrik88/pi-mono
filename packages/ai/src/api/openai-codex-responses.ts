@@ -700,10 +700,9 @@ function isPreviousResponseNotFoundError(error: unknown): error is CodexApiError
 }
 
 function isMissingToolCallContinuationError(error: unknown): error is CodexApiError {
-	return (
-		error instanceof CodexApiError &&
-		/^No tool call found for function call output with call_id \S+\.?$/.test(error.message)
-	);
+	if (!(error instanceof CodexApiError)) return false;
+	const providerMessage = error.payload ? extractCodexEventError(error.payload).message : undefined;
+	return /^No tool call found for function call output with call_id \S+\.?$/.test(providerMessage ?? error.message);
 }
 
 function extractCodexEventError(event: Record<string, unknown>): { code?: string; message?: string } {

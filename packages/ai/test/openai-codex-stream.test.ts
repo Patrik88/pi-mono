@@ -2075,11 +2075,9 @@ describe("openai-codex streaming", () => {
 					queueMicrotask(() =>
 						this.dispatch("message", {
 							data: JSON.stringify({
-								type: "response.failed",
-								response: {
-									error: {
-										message: `No tool call found for function call output with call_id ${incidentCallId}.`,
-									},
+								type: "error",
+								error: {
+									message: `No tool call found for function call output with call_id ${incidentCallId}.`,
 								},
 							}),
 						}),
