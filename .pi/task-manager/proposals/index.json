@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-30T15:09:42.583Z",
+  "updatedAt": "2026-07-30T17:29:01.263Z",
   "proposals": [
     {
       "proposalId": "P001",
@@ -28,6 +28,20 @@
       "warningCount": 0,
       "decisionItemCount": 0,
       "path": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/task-manager/proposals/archive/P002.json",
+      "archived": true
+    },
+    {
+      "proposalId": "P003",
+      "proposalType": "refine",
+      "title": "Refine T003 from accepted T002 cached-continuation evidence",
+      "createdAt": "2026-07-30T17:28:49.171Z",
+      "createdBy": "agent",
+      "lifecycleStatus": "archived",
+      "targetPlanPath": ".pi/tasks.json",
+      "operationCount": 1,
+      "warningCount": 0,
+      "decisionItemCount": 0,
+      "path": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/task-manager/proposals/archive/P003.json",
       "archived": true
     }
   ]

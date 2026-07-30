@@ -1,0 +1,154 @@
+{
+  "proposalType": "refine",
+  "title": "Refine T003 from accepted T002 cached-continuation evidence",
+  "objective": "Replace the disproven broad local-transformation hypothesis with a bounded Codex cached-continuation recovery contract derived from accepted T002 evidence.",
+  "operations": [
+    {
+      "op": "patchTask",
+      "taskId": "T003",
+      "patch": {
+        "title": "Recover Codex cached continuation when server-side tool-call state is missing",
+        "readiness": "scoped",
+        "runtimePreset": "balanced",
+        "description": "Accepted T002 evidence proves the matching tool call/result survives buildSessionContext, the real extension context-hook pipeline, convertToLlm/transformMessages, OpenAI Responses conversion, the first full-context Codex request, and deterministic cached-delta construction. The remaining bounded failure mode is stale or missing server-side continuation state: a valid cached delta can contain function_call_output while relying on previous_response_id for the earlier function_call, and Codex may reject it with `No tool call found for function call output with call_id ...`. Harden the OpenAI Codex cached WebSocket boundary so this exact continuation-state failure invalidates the cached continuation and retries once with the already-coherent full request body, while a full-context failure propagates without loops. Do not synthesize, drop, reorder, or rewrite spans in canonical transformation layers that T002 proved coherent.",
+        "contextRefs": [
+          "artifact:tool-span-orphan-diagnosis"
+        ],
+        "requiredReferences": [
+          {
+            "path": "packages/ai/test/tool-span-coherence-diagnosis.test.ts",
+            "reason": "Accepted T002 artifact proving local projection/full-context coherence and isolating cached continuation/state as the residual hypothesis.",
+            "embed": true
+          },
+          {
+            "path": "packages/ai/src/api/openai-codex-responses.ts",
+            "reason": "Owner of cached WebSocket delta construction, continuation invalidation, provider error classification, and full-context retry behavior.",
+            "embed": false
+          }
+        ],
+        "suggestedReferences": [
+          {
+            "path": "packages/ai/src/api/openai-responses-shared.ts",
+            "reason": "Pair-preserving full-context serialization contract proven by T002; inspect only if request-item identity semantics are needed."
+          },
+          {
+            "path": "packages/ai/test/openai-codex-stream.test.ts",
+            "reason": "Existing cached-delta and previous_response_not_found recovery coverage; extend the closest offline transport regression."
+          }
+        ],
+        "likelyFiles": [
+          "packages/ai/src/api/openai-codex-responses.ts",
+          "packages/ai/test/openai-codex-stream.test.ts",
+          "packages/ai/CHANGELOG.md"
+        ],
+        "expectedCreates": [],
+        "produces": [
+          {
+            "id": "codex-orphan-output-continuation-recovery",
+            "kind": "code",
+            "path": "packages/ai/src/api/openai-codex-responses.ts",
+            "description": "Bounded cached-continuation error classification and one-shot full-context recovery without canonical span rewriting."
+          },
+          {
+            "id": "codex-orphan-output-continuation-regression",
+            "kind": "test",
+            "path": "packages/ai/test/openai-codex-stream.test.ts",
+            "description": "Offline regression covering orphan-output rejection of a cached delta and coherent full-context retry."
+          }
+        ],
+        "protectedPaths": [
+          {
+            "path": "/Users/pg/.pi/agent/sessions/**",
+            "policy": "do-not-edit",
+            "reason": "Personal incident sessions remain provenance only."
+          },
+          {
+            "path": "packages/ai/src/api/transform-messages.ts",
+            "policy": "read-only",
+            "reason": "T002 proved this canonical transformation boundary preserves the pair; do not add speculative span rewriting."
+          },
+          {
+            "path": "packages/ai/src/api/openai-responses-shared.ts",
+            "policy": "read-only",
+            "reason": "T002 proved full-context Responses serialization preserves the pair; inspect only."
+          },
+          {
+            "path": "packages/coding-agent/src/**",
+            "policy": "read-only",
+            "reason": "T002 proved the runtime context pipeline preserves the pair; T003 is bounded to the Codex provider boundary."
+          }
+        ],
+        "readBudget": {
+          "mode": "focused",
+          "maxExtraReadFilesBeforeEditing": 4,
+          "guidance": "Start from the embedded T002 diagnosis and targeted cached-continuation source/test sections; do not rediscover the personal incident or broaden into canonical transforms."
+        },
+        "acceptanceCriteria": [
+          "A cached WebSocket request that uses previous_response_id and is rejected with the exact Codex orphan function_call_output/tool-call-state failure is treated as a stale continuation, invalidates that continuation, and retries exactly once with the coherent full request body and no previous_response_id.",
+          "The recovery is enabled only when the failed request actually used cached continuation semantics; the same provider error from a full-context request is propagated without retry loops or speculative rewriting.",
+          "The full-context retry preserves the exact matching function_call/function_call_output call_id and chronology already proven by T002, including foreign IDs and Responses item-id suffix normalization handled by existing conversion.",
+          "Valid websocket-cached deltas remain delta-only and keep existing performance/continuation semantics; previous_response_not_found recovery remains passing.",
+          "No synthetic or real result is duplicated, dropped, or rewritten, and genuine error content such as `Command aborted` remains unchanged.",
+          "Offline tests capture the failed cached-delta body and the one-shot full-context retry body, assert connection/previous_response_id behavior, and cover the exact T002 incident call-id shape without a live provider.",
+          "No live paid-provider request or personal-session mutation occurs. Production edits are limited to packages/ai/src/api/openai-codex-responses.ts, with regressions in packages/ai/test/openai-codex-stream.test.ts and an Unreleased packages/ai changelog entry.",
+          "Implementation stays on the existing pg/ext/tool-span-coherence-tasks worktree because T002 did not demonstrate an upstream-parity local transformation bug; npm run check, focused packages/ai tests, fresh completion evidence, and required independent review must pass."
+        ],
+        "validation": [
+          {
+            "kind": "command",
+            "command": "npm run check",
+            "cwd": "{repo}",
+            "timeoutSeconds": 600,
+            "required": true,
+            "noninteractive": true
+          },
+          {
+            "kind": "command",
+            "command": "cd packages/ai && node ../../node_modules/vitest/dist/cli.js --run test/openai-codex-stream.test.ts test/tool-span-coherence-diagnosis.test.ts",
+            "cwd": "{repo}",
+            "timeoutSeconds": 600,
+            "required": true,
+            "noninteractive": true
+          }
+        ],
+        "notes": "T002 accepted diagnosis on commit 13cc56836: no local projection divergence; residual hypothesis is remote Codex cached continuation/state validation. Implement only bounded provider-boundary recovery. Do not edit stable main/pg/daily, resolve remote divergence, or touch unrelated .pi-subagents/FORK_RESTRUCTURE.md."
+      }
+    }
+  ],
+  "version": 1,
+  "proposalId": "P003",
+  "createdAt": "2026-07-30T17:28:49.171Z",
+  "createdBy": "agent",
+  "targetPlanPath": ".pi/tasks.json",
+  "basePlan": {
+    "planId": "pi-mono",
+    "updatedAt": "2026-07-30T17:26:40.919Z",
+    "hash": "sha256:e1beafcb88508a273d61da430f2a2813b0a85498e001f58d6b70216357aa53a7"
+  },
+  "basePlanUpdatedAt": "2026-07-30T17:26:40.919Z",
+  "basePlanHash": "sha256:e1beafcb88508a273d61da430f2a2813b0a85498e001f58d6b70216357aa53a7",
+  "sourceRefs": [],
+  "assumptions": [],
+  "openQuestions": [],
+  "warnings": [],
+  "decisionItems": [],
+  "lifecycle": {
+    "status": "archived",
+    "updatedAt": "2026-07-30T17:29:01.261Z",
+    "updatedBy": "session:019fb3cb-0b78-7740-b5f2-1137b4a8ac90",
+    "appliedAt": "2026-07-30T17:29:01.253Z",
+    "appliedBy": "session:019fb3cb-0b78-7740-b5f2-1137b4a8ac90",
+    "archivedAt": "2026-07-30T17:29:01.261Z",
+    "archivedBy": "session:019fb3cb-0b78-7740-b5f2-1137b4a8ac90",
+    "reason": "Archived after successful apply"
+  },
+  "review": {
+    "status": "archived",
+    "appliedAt": "2026-07-30T17:29:01.253Z",
+    "appliedBy": "session:019fb3cb-0b78-7740-b5f2-1137b4a8ac90",
+    "targetPlanPath": ".pi/tasks.json",
+    "operationSummaries": [
+      "patchTask T003 (title, readiness, runtimePreset, description, contextRefs, requiredReferences, suggestedReferences, likelyFiles, expectedCreates, produces, protectedPaths, readBudget, acceptanceCriteria, validation, notes)"
+    ]
+  }
+}
