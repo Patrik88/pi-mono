@@ -30,7 +30,7 @@ The following inventory separates creation, transport, persistence, projection, 
 | `packages/agent/src/harness/session/*` | The newer harness has its own typed session tree, projection, compaction checkpoint, and storage contracts. | Add the same semantic entry and projection rule there; avoid leaving coding-agent and harness formats with different meanings. |
 | Overflow/retry (`utils/overflow.ts`, `agent-session.ts`) | Detects overflow from failed assistant error text and usage; transient retry classification also accepts an assistant. | Extract a shared provider-outcome view/classifier accepting either a stream assistant or durable outcome during migration. Preserve one compact-and-retry attempt and retry budgets. |
 | Compaction and summarization | Error/aborted assistant usage is ignored, but empty failed messages can still occupy chronology and enter message preparation/context unless removed by special paths. Token estimates see zero content. | Outcomes remain chronological tree entries but never become summary input or retained model tail unless a renderer deliberately summarizes diagnostics for humans. Usage/cost aggregation remains available out of band. |
-| Interactive UI | `AssistantMessageComponent` renders partial content and appends error/abort text. Retry UI may later replace/update the visible failure. Tool-call failures have special rendering. | Render `provider_outcome` as a status/error component. If partial assistant content exists, render a normal assistant message plus an associated outcome, not a synthetic error text message. |
+| Interactive UI | `AssistantMessageComponent` renders partial content and appends error/abort text. Retry UI may later replace/update the visible failure. Tool-call failures have special rendering. | Render `provider_outcome` as a status/error component. Render partial content as a non-conversational `assistant_fragment` followed by its outcome, not as a normal assistant turn or synthetic error text message. |
 | Print mode | Prints error text for failed/aborted assistants, otherwise prints content. | Print the outcome diagnostics; print partial assistant content separately when present. |
 | HTML export | Exports session entries and pre-renders tool calls/results found in message entries. Browser templates consume the serialized entry set. | Export outcome entries losslessly and render them as non-conversational timeline items. Sanitized export must use the same diagnostic redaction policy. |
 | RPC | `get_entries` returns the `SessionEntry` union; live subscriptions expose agent/session events. | Version RPC capabilities; add `provider_outcome` to entry results and a typed live event. Old clients may display an unknown non-executable entry but must not reinterpret it as a message. |
@@ -50,6 +50,8 @@ Provider adapters continue to emit `AssistantMessageEvent`. At the consumer boun
 ```ts
 interface ProviderOutcomeV1 {
   version: 1;
+  outcomeId: string;
+  attemptId: string;
   status: "error" | "aborted";
   phase: "before_content" | "after_partial_content" | "after_tool_call";
   api: string;
@@ -70,14 +72,32 @@ interface ProviderOutcomeV1 {
 }
 ```
 
-The field set is intentionally diagnostic and non-executable. It contains no content blocks, roles, tool call arguments, tool results, system instructions, or opaque provider continuation payloads. Diagnostics retain existing redaction and size bounds. `errorMessage` is required after normalization, using the current human-readable fallback when the provider omitted it.
+The field set is intentionally diagnostic and non-executable. It contains no content blocks, roles, tool call arguments, tool results, system instructions, or opaque provider continuation payloads. Diagnostics retain existing redaction and size bounds. `errorMessage` is required after normalization, using the current human-readable fallback when the provider omitted it. `attemptId` identifies one provider invocation; `outcomeId` identifies its terminal outcome across live events, persistence, retry records, RPC, and export. Both are generated once at normalization and remain stable across retries of event delivery or storage reload.
+
+Session v4 makes partial failures a separate, versioned non-conversational shape rather than overloading `SessionMessageEntry`:
+
+```ts
+interface AssistantFragmentEntry extends SessionEntryBase {
+  type: "assistant_fragment";
+  version: 1;
+  attemptId: string;
+  api: string;
+  provider: string;
+  model: string;
+  content: (TextContent | ThinkingContent | ToolCall)[];
+  timestampMs: number;
+  replay: "never";
+}
+```
+
+`assistant_fragment@1` is human-visible evidence only: `sessionEntryToContextMessages()` always returns `[]`, including when the next model is the same provider. Promoting a fragment into conversation requires an explicit future semantic capability and session-version change; adapters cannot opt into replay ad hoc. Thinking signatures and complete tool calls may be retained for diagnostics but remain non-executable, are redacted in sanitized export, and never trigger tool execution. This conservative rule avoids presenting an interrupted provider turn as a valid assistant turn while preserving what the user saw.
 
 A terminal stream assistant is normalized as follows:
 
 - `stopReason` is successful: persist one normal assistant message.
-- failed/aborted with no visible content and no complete tool call: persist one `provider_outcome` entry, no assistant message.
-- failed/aborted with text or thinking content: persist the partial assistant message with a non-success completion marker that is not replayed as a completed provider turn unless the target provider adapter explicitly supports partial replay; persist a linked outcome entry.
-- failed/aborted after a complete tool call: persist the assistant tool-call message and linked outcome. Tool execution must not begin merely because a call appeared before a failed terminal event unless the existing agent state already accepted that call as complete.
+- failed/aborted with no visible content and no complete tool call: persist one `provider_outcome` entry, no assistant message or fragment.
+- failed/aborted with any text, thinking, or tool-call block: persist one `assistant_fragment@1` and one linked `provider_outcome@1`; persist no assistant message.
+- tool execution must not begin from an `assistant_fragment`; only a successful assistant terminal message can authorize the existing tool-execution path.
 
 The production design should use an internal normalization result rather than mutating the original stream object:
 
@@ -85,7 +105,7 @@ The production design should use an internal normalization result rather than mu
 type NormalizedProviderTermination =
   | { kind: "assistant"; message: AssistantMessage }
   | { kind: "outcome"; outcome: ProviderOutcomeV1 }
-  | { kind: "partial_assistant_with_outcome"; message: AssistantMessage; outcome: ProviderOutcomeV1 };
+  | { kind: "fragment_with_outcome"; fragment: AssistantFragmentEntry; outcome: ProviderOutcomeV1 };
 ```
 
 ### Durable session entry
@@ -96,12 +116,12 @@ Session v4 adds:
 interface ProviderOutcomeEntry extends SessionEntryBase {
   type: "provider_outcome";
   outcome: ProviderOutcomeV1;
-  assistantEntryId?: string;
+  fragmentEntryId?: string;
   requestEntryId?: string;
 }
 ```
 
-`assistantEntryId` links an outcome to persisted partial content. `requestEntryId` is optional because current sessions do not have a first-class request entry; it is reserved for a later version and must not be synthesized from user entry IDs without a defined request model.
+`fragmentEntryId` links an outcome to `assistant_fragment@1`; both records carry the same `attemptId`. `requestEntryId` is optional because current sessions do not have a first-class request entry; it is reserved for a later version and must not be synthesized from user entry IDs without a defined request model.
 
 `ProviderOutcomeEntry` participates in chronology, tree navigation, labels, activity timestamps, export, RPC, usage accounting, and human rendering. It never projects to `AgentMessage` in `buildSessionContext()`.
 
@@ -113,11 +133,11 @@ For each v1-v3 `type: "message"` entry whose message has role `assistant`:
 
 1. If `stopReason` is neither `error` nor `aborted`, leave it unchanged.
 2. If content is empty or missing after existing null-content normalization, replace the entry in place with `type: "provider_outcome"`, preserving `id`, `parentId`, and entry timestamp. Build `ProviderOutcomeV1` from the assistant fields.
-3. If content has any block, leave the message unchanged for backward compatibility. A later explicit migration may split partial content only after provider replay conformance is proven.
+3. If every content block is a known text, thinking, or tool-call shape, replace the message at its existing ID with `assistant_fragment@1`, append a linked `provider_outcome@1` with a collision-checked deterministic migration ID, and reparent the original entry's direct children to the outcome. Labels and compaction `firstKeptEntryId` references continue to target the fragment's preserved ID; if the failed message was the leaf, the migrated leaf becomes the outcome ID. Neither migrated record projects to provider context.
 4. If malformed usage is absent, supply zero usage and attach a migration diagnostic; do not reject the whole session.
-5. Unknown content-bearing assistant shapes fail closed: retain the original entry, exclude unsupported blocks from cross-provider sends, and surface a compatibility warning. Never discard them as if empty.
+5. Unknown content-bearing assistant shapes fail closed: retain the original entry only as an opaque read-only legacy record, exclude it from all provider sends, disable append/branch/compaction mutation on that path, and surface a compatibility warning. Never discard it as if empty or partially convert its blocks.
 
-Replacing the entry in place in the migrated representation preserves child links, labels, branches, leaf IDs, fork paths, and compaction `firstKeptEntryId` references. The legacy file itself is not modified.
+Replacing an empty failure in place preserves child links, labels, branches, leaf IDs, fork paths, and compaction `firstKeptEntryId` references. Splitting a known content-bearing failure preserves the original ID on the fragment and performs the explicit child/leaf rewrite above. The legacy file itself is not modified.
 
 ### Atomic migration transaction
 
@@ -151,8 +171,8 @@ All v4 readers still require an explicit `header.version > CURRENT_SESSION_VERSI
 
 ## Context, branch, and compaction semantics
 
-- `sessionEntryToContextMessages(provider_outcome)` returns `[]` in both coding-agent and agent harness.
-- `buildContextEntries()` retains outcomes so the active timeline and tree are complete.
+- `sessionEntryToContextMessages(provider_outcome)` and `sessionEntryToContextMessages(assistant_fragment)` return `[]` in both coding-agent and agent harness.
+- `buildContextEntries()` retains outcomes and fragments so the active timeline and tree are complete.
 - `buildSessionContext()` omits outcomes from `messages` and may expose them in separate typed metadata only if a consumer requests it.
 - Context item kinds gain `provider_outcome` only for inspection APIs; it never has an `AgentMessage` value.
 - Branching from or after an outcome is valid. The outcome may be a leaf and may have children.
@@ -167,15 +187,16 @@ All v4 readers still require an explicit `header.version > CURRENT_SESSION_VERSI
 
 ### Live events
 
-Introduce an additive agent-session event:
+Introduce additive agent-session events:
 
 ```ts
-{ type: "provider_outcome"; outcome: ProviderOutcomeV1; entryId?: string }
+{ type: "assistant_fragment"; attemptId: string; entryId?: string; fragment: AssistantFragmentEntry }
+{ type: "provider_outcome"; outcome: ProviderOutcomeV1; entryId?: string; fragmentEntryId?: string }
 ```
 
-Ordering for an empty failure is terminal stream event, normalization, persistence, `provider_outcome`, retry/compaction scheduling, then `agent_end`. For partial content, `message_end` for the partial message precedes the linked `provider_outcome` event.
+Ordering for an empty failure is terminal stream event, normalization, persistence, `provider_outcome`, retry/compaction scheduling, then `agent_end`. For partial content, `assistant_fragment` precedes its linked `provider_outcome`; no normal `message_end` is emitted in the new event capability.
 
-During one compatibility release, existing `message_end` observers may still receive the raw failed assistant stream value, but persistence must use the normalized result. The event carries a deprecation marker/capability flag so extensions can migrate. In the next semantic event version, empty failures stop generating `message_end`.
+During one compatibility release, legacy observers may additionally receive the raw failed assistant as `message_end`. That compatibility event must carry `terminalOutcomeId` and `attemptId` equal to the following `provider_outcome.outcomeId` and `attemptId`; clients deduplicate on `outcomeId`, not payload equality, timestamp, response ID, or entry ID. Redelivery of either event retains the same identity. RPC capability negotiation advertises `providerTerminalEvents: 2`; clients selecting v2 receive fragment/outcome events only, while v1 clients receive the compatibility `message_end` plus outcome notification. Persistence always uses the normalized records. The next semantic event version removes failed-assistant `message_end` delivery.
 
 ### Extension hooks
 
@@ -250,7 +271,7 @@ Create a shared fixture matrix with these terminal cases:
 9. malformed legacy empty error assistant;
 10. unknown content-bearing block and unknown outcome version.
 
-For every installed provider/API module, either run its event converter against the common terminal fixture or declare a reviewed adapter exemption when its SDK cannot be injected directly. Each fixture must pass through:
+For every installed provider/API module, run its event converter against the common terminal fixture when injection is available. A reviewed adapter exemption only waives adapter-specific injection: the adapter must still pass the shared synthetic terminal normalizer suite using constructed `AssistantMessageEvent.error` values for all ten cases, plus a source-level assertion that its terminal errors enter the shared normalizer. No provider is exempt from persistence, projection, model-switch, compaction, or export assertions. Each fixture must pass through:
 
 - provider stream terminal event;
 - AgentSession normalization;
@@ -307,7 +328,7 @@ Rejected. Provider failure semantics are core, must be understood by retry/UI/RP
 3. **Typed entry and migration:** add session v4, `ProviderOutcomeEntry`, normalization, side-by-side migration, tree/RPC/export support, and outcome-aware usage/listing.
 4. **Retry/compaction/UI:** consume outcomes directly, remove last-assistant deletion for empty failures, add interactive/print/HTML rendering, and cover partial-content cases.
 5. **Extension and interchange capability:** add outcome hooks, RPC capability negotiation, Bridge compatibility rules, and read-only fallback for older clients.
-6. **Event cleanup:** after one deprecation cycle, stop emitting empty failed assistants as `message_end`; consider a public typed provider terminal result in `packages/ai` based on parity evidence.
+6. **Event cleanup:** after one deprecation cycle, stop emitting any failed assistant as `message_end`; consider a public typed provider terminal result in `packages/ai` based on parity evidence.
 
 Each stage must keep v1-v3 load compatibility and must not permit a down-level writer to mutate v4.
 
@@ -323,7 +344,14 @@ Package ownership and manager-ready tasks:
 2. **Session v4 storage and migration (`packages/coding-agent`)**: add the atomic head/immutable-snapshot transaction, entry type, side-by-side migration, legacy-divergence handling, future-version mutation gate, append API, context projection, branch/fork/list/usage behavior. Review: filesystem crash consistency, downgrade isolation, and session-format compatibility.
 3. **Harness parity (`packages/agent`)**: add the same entry semantics to storage/session types, context builders, compaction retained tails, and storage conformance. Review: no divergence between the two session implementations.
 4. **Agent retry/compaction integration (`packages/coding-agent`)**: normalize terminal events, persist outcomes, retain partial content, update overflow/retry and compaction. Review: retry budgets, tool-call safety, and auto-compaction regressions.
-5. **UI/RPC/export/extensions (`packages/coding-agent`)**: render and expose outcomes, add capability negotiation and hooks, update HTML/print/session exports. Review: extension compatibility and no accidental context injection.
+5. **UI/RPC/export/extensions (`packages/coding-agent`)**: implement the concrete seams below and add capability negotiation. Review: extension compatibility and no accidental context injection.
+   - live normalization/event ordering: `src/core/agent-session.ts`;
+   - RPC command/result and capability types: `src/modes/rpc/rpc-types.ts`, dispatch in `src/modes/rpc/rpc-mode.ts`, and client handling in `src/modes/rpc/rpc-client.ts`;
+   - interactive rendering and timeline reconstruction: `src/modes/interactive/interactive-mode.ts`, `src/modes/interactive/components/assistant-message.ts`, and `src/modes/interactive/components/tree-selector.ts`;
+   - print rendering: `src/modes/print-mode.ts`;
+   - HTML/session export: `src/core/export-html/index.ts` plus `template.js`/`template.html` for browser rendering;
+   - operational usage totals: `src/core/usage-totals.ts`, without feeding outcome usage into compaction baselines;
+   - extension API, registration, and dispatch: `src/core/extensions/types.ts`, `src/core/extensions/loader.ts`, and `src/core/extensions/runner.ts`.
 6. **Provider conformance matrix (`packages/ai`, `packages/agent`, `packages/coding-agent`)**: faux fixtures for all installed provider APIs and cross-provider replay. Review: provider owners plus an independent session architecture reviewer.
 7. **Documentation and migration release note**: update `session-format.md`, public extension/RPC docs, and changelogs only after implementation behavior is settled.
 
