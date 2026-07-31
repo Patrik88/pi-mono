@@ -4414,6 +4414,171 @@
         "packages/ai/src/api/openai-codex-responses.ts",
         "packages/ai/test/openai-codex-stream.test.ts"
       ]
+    },
+    {
+      "id": "T004",
+      "title": "Design typed provider outcomes and a versioned multi-provider session contract",
+      "status": "todo",
+      "readiness": "scoped",
+      "priority": "high",
+      "type": "platform-investigation",
+      "role": "worker",
+      "runtimePreset": "balanced",
+      "description": "Diagnose and design the Pi-core boundary that currently persists provider failures as semantically empty assistant messages. Define a typed non-conversational provider-outcome/session entry, migration and UI/event semantics, plus explicit additive-metadata evolution and conformance rules for session history consumed across providers. This task is investigation/design only on pg/ext/tool-span-coherence-tasks; any production implementation must be proposed for a fresh pg/core/* branch from main after upstream-parity review.",
+      "sourceRefs": [
+        {
+          "path": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-proj-vetpris--/2026-07-31T08-17-20-486Z_019fb73f-d066-7c48-aac6-78d81bea6a93.jsonl",
+          "reason": "Verified Codex context_length_exceeded persisted as assistant content:[]/stopReason:error with zero usage and later blocked Pi-authoritative Bridge import. Evidence only; never mutate."
+        },
+        {
+          "path": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-proj-pi-extensions--/2026-07-19T13-28-34-933Z_019f7a90-7375-71ce-b63b-c7f3fb67f33f.jsonl",
+          "reason": "Large mixed-provider session with repeated placeholder refusals and cross-provider history pressure. Evidence only; never mutate."
+        }
+      ],
+      "requiredReferences": [
+        {
+          "path": "packages/ai/src/types.ts",
+          "reason": "Canonical AssistantMessage/stopReason/errorMessage/usage contract used by all provider streams.",
+          "embed": true
+        },
+        {
+          "path": "packages/ai/src/api/openai-codex-responses.ts",
+          "reason": "Verified producer of the current Codex empty error assistant shape.",
+          "embed": false
+        },
+        {
+          "path": "packages/ai/src/api/pi-messages.ts",
+          "reason": "Generic provider stream/error message construction and propagation.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/src/core/session-manager.ts",
+          "reason": "Canonical session-entry storage, branch reconstruction, context conversion, and migration boundary.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/docs/session-format.md",
+          "reason": "Public persisted-session format and buildSessionContext semantics.",
+          "embed": true
+        },
+        {
+          "path": "packages/agent/src/harness/session/session.ts",
+          "reason": "Additional harness session/context boundary and future shared outcome semantics.",
+          "embed": false
+        }
+      ],
+      "suggestedReferences": [
+        {
+          "path": "packages/ai/src/api/openai-responses.ts",
+          "reason": "Compare a second provider error producer.",
+          "embed": false
+        },
+        {
+          "path": "packages/ai/src/api/anthropic-messages.ts",
+          "reason": "Compare Anthropic error/refusal output and signed-thinking semantics.",
+          "embed": false
+        },
+        {
+          "path": "packages/ai/src/utils/overflow.ts",
+          "reason": "Current overflow recognition from assistant errorMessage and interaction with compaction/retry.",
+          "embed": false
+        },
+        {
+          "path": "packages/coding-agent/test/agent-session-auto-compaction-queue.test.ts",
+          "reason": "Existing failed-assistant/overflow/retry behavior that a typed outcome must preserve.",
+          "embed": false
+        }
+      ],
+      "likelyFiles": [
+        "packages/ai/src/types.ts",
+        "packages/ai/src/api/openai-codex-responses.ts",
+        "packages/ai/src/api/pi-messages.ts",
+        "packages/coding-agent/src/core/session-manager.ts",
+        "packages/coding-agent/docs/session-format.md",
+        "packages/agent/src/harness/session/session.ts",
+        "packages/coding-agent/docs/provider-outcome-session-contract.md"
+      ],
+      "expectedCreates": [
+        "packages/coding-agent/docs/provider-outcome-session-contract.md"
+      ],
+      "produces": [
+        {
+          "id": "typed-provider-outcome-session-contract",
+          "kind": "design-artifact",
+          "path": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+          "description": "Evidence-backed typed provider-outcome proposal, versioned session interchange/evolution rules, migration and API impacts, conformance fixture plan, ownership decision, and pg/core implementation split."
+        }
+      ],
+      "protectedPaths": [
+        {
+          "path": "/Users/pg/.pi/agent/sessions/**",
+          "policy": "do-not-edit",
+          "reason": "Personal persisted sessions are immutable evidence only."
+        },
+        {
+          "path": "packages/ai/src/**",
+          "policy": "do-not-edit",
+          "reason": "T004 is diagnosis/design only; do not change provider or message production in this pg/ext worktree."
+        },
+        {
+          "path": "packages/agent/src/**",
+          "policy": "do-not-edit",
+          "reason": "No runtime implementation in the investigation task."
+        },
+        {
+          "path": "packages/coding-agent/src/**",
+          "policy": "do-not-edit",
+          "reason": "No session schema/context implementation until a dedicated pg/core task is approved."
+        },
+        {
+          "path": "packages/*/test/**",
+          "policy": "do-not-edit",
+          "reason": "Conformance fixtures are specified here and implemented only in the later owner branch."
+        },
+        {
+          "path": ".pi-subagents/**",
+          "policy": "do-not-edit",
+          "reason": "Runner artifacts remain outside task/Git state."
+        }
+      ],
+      "readBudget": {
+        "mode": "focused",
+        "maxExtraReadFilesBeforeEditing": 8,
+        "guidance": "Read the canonical message type, one verified producer, generic Pi message stream, SessionManager/context boundary, session-format docs, and overflow/compaction consumers. Expand to additional providers only for a bounded comparison matrix."
+      },
+      "acceptanceCriteria": [
+        "Inventory every layer that creates, persists, renders, retries, compacts, exports, or sends stopReason:error/aborted assistant messages with empty content; distinguish provider stream state from durable conversational history.",
+        "Define a typed provider-outcome entry/event that preserves human-visible error/retry/usage diagnostics while remaining outside provider-visible conversation history unless explicit visible assistant content exists.",
+        "Specify SessionEntry schema/version migration, branch/tree/context behavior, JSON/RPC/events, extension message hooks, UI rendering, resume/fork/compaction, and backward compatibility for existing empty error assistant records.",
+        "Define versioned multi-provider interchange evolution rules: semantic block/role/tool/chronology changes are versioned and fail closed; additive bounded numeric usage/cost metadata is non-semantic and forward-compatible; unknown executable/content-bearing shapes remain conservative.",
+        "Specify conformance fixtures that run each installed provider's error/abort output through persistence, buildSessionContext, model switch, compaction, and export without live paid-provider calls.",
+        "Assess whether the change is upstream-general and identify the exact pg/core branch, package ownership, implementation slices, review requirements, and migration risk. Do not claim an upstream fix before parity evidence.",
+        "Produce packages/coding-agent/docs/provider-outcome-session-contract.md with alternatives, rejected designs, staged rollout, compatibility boundary for extensions such as Claude Bridge, and a manager-ready implementation task split.",
+        "No production source/test/session mutation occurs in T004; only the design artifact and task bookkeeping may change."
+      ],
+      "validation": [
+        {
+          "kind": "command",
+          "command": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+          "required": true,
+          "noninteractive": true
+        },
+        {
+          "kind": "manual",
+          "description": "Independent architecture review of session-format compatibility, provider/UI/compaction consumers, migration, and pg/core ownership; no live provider request.",
+          "required": true,
+          "noninteractive": true
+        }
+      ],
+      "reviewPolicy": {
+        "required": true,
+        "role": "reviewer",
+        "transport": "subagent",
+        "maxRounds": 2
+      },
+      "notes": [
+        "Created July 31, 2026 after the Vetpris assistant-content-placeholder@1 reproduction proved that provider error shells are a platform-level multi-provider interchange problem. Keep this topic branch investigation-only; production implementation requires a new pg/core/* worktree from main."
+      ]
     }
   ],
   "proposalApplications": [
@@ -4437,7 +4602,14 @@
       "appliedAt": "2026-07-30T17:29:01.253Z",
       "appliedBy": "session:019fb3cb-0b78-7740-b5f2-1137b4a8ac90",
       "operationCount": 1
+    },
+    {
+      "proposalId": "P004",
+      "proposalType": "manual",
+      "appliedAt": "2026-07-31T15:32:55.910Z",
+      "appliedBy": "session:019f7a90-7375-71ce-b63b-c7f3fb67f33f",
+      "operationCount": 1
     }
   ],
-  "updatedAt": "2026-07-30T17:40:43.886Z"
+  "updatedAt": "2026-07-31T15:32:55.917Z"
 }

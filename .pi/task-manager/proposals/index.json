@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-30T17:29:01.263Z",
+  "updatedAt": "2026-07-31T15:32:55.921Z",
   "proposals": [
     {
       "proposalId": "P001",
@@ -42,6 +42,20 @@
       "warningCount": 0,
       "decisionItemCount": 0,
       "path": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/task-manager/proposals/archive/P003.json",
+      "archived": true
+    },
+    {
+      "proposalId": "P004",
+      "proposalType": "manual",
+      "title": "Create 1 task",
+      "createdAt": "2026-07-31T15:32:55.898Z",
+      "createdBy": "session:019f7a90-7375-71ce-b63b-c7f3fb67f33f",
+      "lifecycleStatus": "archived",
+      "targetPlanPath": ".pi/tasks.json",
+      "operationCount": 1,
+      "warningCount": 0,
+      "decisionItemCount": 0,
+      "path": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/task-manager/proposals/archive/P004.json",
       "archived": true
     }
   ]
