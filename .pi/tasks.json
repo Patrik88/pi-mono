@@ -4418,7 +4418,7 @@
     {
       "id": "T004",
       "title": "Design typed provider outcomes and a versioned multi-provider session contract",
-      "status": "todo",
+      "status": "review",
       "readiness": "scoped",
       "priority": "high",
       "type": "platform-investigation",
@@ -4578,7 +4578,1590 @@
       },
       "notes": [
         "Created July 31, 2026 after the Vetpris assistant-content-placeholder@1 reproduction proved that provider error shells are a platform-level multi-provider interchange problem. Keep this topic branch investigation-only; production implementation requires a new pg/core/* worktree from main."
-      ]
+      ],
+      "attempts": [
+        {
+          "at": "2026-07-31T15:42:02.103Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "attempt",
+          "summary": "Delegate fresh-child started."
+        },
+        {
+          "at": "2026-07-31T15:42:02.303Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "attempt",
+          "summary": "Launched task T004 through direct pi-subagents transport.",
+          "executionMode": "subagent",
+          "dryRun": false,
+          "status": "succeeded",
+          "launchState": "indexed",
+          "launchId": "TR-T004-ms941zir",
+          "contextPacketHash": "sha256:b5e9f506fbc49f975cfcc0200a2e8a75786d38626f19e5f2a3994aff3079ccd4",
+          "transportSummary": "runId=a0053289-57b3-4609-a4cd-4176e4367b7d; childSessions=1; Async: task-manager-direct/direct [a0053289-57b3-4609-a4cd-4176e4367b7d] The async run is detached and running in the background. You are in an interactive session. By default, return control to the user now; Pi will wake you on completion when the run finishes or needs attention. Do NOT call subagent_wait() merely to wait, and do not run sleep/polling loops to wait for it. Override that default and call subagent_wait() before ending the turn only when the current request is run-to-completion — for example, the user asked you to report results back here before continuing, or a skill must finish in one turn. In that case, call subagent_wait() to block until the run completes so its results are delivered in this turn instead of deferred. Otherwise, continue any independent work or return control to the user. Use subagent({ action: \"status\", id: \"...\" }) for a one-shot status/result or to inspect a blocked/stale run, never as a…",
+          "subagentRunRefs": [
+            {
+              "schemaVersion": 1,
+              "recordId": "a0053289-57b3-4609-a4cd-4176e4367b7d:0",
+              "runId": "a0053289-57b3-4609-a4cd-4176e4367b7d",
+              "childIndex": 0,
+              "displayIndex": 1,
+              "agent": "task-manager-direct/direct",
+              "role": "task-manager-direct/direct",
+              "workflow": "task-run",
+              "transport": "subagent",
+              "source": "task-manager",
+              "contextMode": "fresh",
+              "taskId": "T004",
+              "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+              "childSessionFile": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/0148b84e/run-0/session.jsonl",
+              "asyncDir": "/var/folders/d8/7tmzyhkx4pq_369wpfkxw8y80000gn/T/pi-subagents-uid-501/async-subagent-runs/a0053289-57b3-4609-a4cd-4176e4367b7d",
+              "resultPath": "/var/folders/d8/7tmzyhkx4pq_369wpfkxw8y80000gn/T/pi-subagents-uid-501/async-subagent-results/a0053289-57b3-4609-a4cd-4176e4367b7d.json",
+              "statusPath": "/var/folders/d8/7tmzyhkx4pq_369wpfkxw8y80000gn/T/pi-subagents-uid-501/async-subagent-runs/a0053289-57b3-4609-a4cd-4176e4367b7d/status.json",
+              "status": "queued",
+              "contextPacketHash": "sha256:b5e9f506fbc49f975cfcc0200a2e8a75786d38626f19e5f2a3994aff3079ccd4",
+              "launchId": "TR-T004-ms941zir",
+              "inspectCommands": {
+                "picker": "/subagent-sessions --run a0053289-57b3-4609-a4cd-4176e4367b7d",
+                "status": "subagent({ action: \"status\", id: \"a0053289-57b3-4609-a4cd-4176e4367b7d\" })",
+                "session": "pi --session \"/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/0148b84e/run-0/session.jsonl\""
+              }
+            }
+          ],
+          "subagentInspectGuidance": "Task-run subagent child-session refs\nPlan: /Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json\n- Use pi-subagents child-session surfaces; agent-trace is not required.\n- Task filter: /subagent-sessions --task T004\n- run=a0053289-57b3-4609-a4cd-4176e4367b7d child=0 (agent=task-manager-direct/direct, workflow=task-run, transport=subagent, context=fresh, status=queued)\n  - record: a0053289-57b3-4609-a4cd-4176e4367b7d:0\n  - task: T004\n  - contextPacket: sha256:b5e9f506fbc49f975cfcc0200a2e8a75786d38626f19e5f2a3994aff3079ccd4\n  - childSession: /Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/0148b84e/run-0/session.jsonl\n  - inspect: /subagent-sessions --run a0053289-57b3-4609-a4cd-4176e4367b7d | /subagent-sessions --task T004 | subagent({ action: \"status\", id: \"a0053289-57b3-4609-a4cd-4176e4367b7d\" }) | pi --session \"/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/0148b84e/run-0/session.jsonl\""
+        },
+        {
+          "at": "2026-07-31T15:45:38.600Z",
+          "by": "session:019fb8d6-f923-78f7-b25e-a68cedaa0bb7",
+          "agent": "pi",
+          "sessionId": "019fb8d6-f923-78f7-b25e-a68cedaa0bb7",
+          "kind": "request_completion",
+          "summary": "Request-completion completion-e60aeeb1-7eb5-4c43-ad21-2e7d87770f52: pending_manual_validation; validation=pending_manual; validationPlan=sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de.",
+          "completionAttemptId": "completion-e60aeeb1-7eb5-4c43-ad21-2e7d87770f52",
+          "acceptanceDecision": "pending_manual_validation",
+          "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+          "recordedBy": "delegated-child-run",
+          "delegatedRunId": "a0053289-57b3-4609-a4cd-4176e4367b7d",
+          "delegatedLaunchKey": "TR-T004-ms941zir"
+        },
+        {
+          "at": "2026-07-31T15:48:27.236Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "review_request",
+          "summary": "Review round 1/2 requested."
+        },
+        {
+          "at": "2026-07-31T15:49:11.033Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "review_settlement",
+          "settlementId": "RS-T004-round1-block",
+          "settlementKind": "review_result",
+          "verdict": "block",
+          "reviewRequestId": "RR-T004-0ed2eb59-4080-4c77-812e-7e7f5506f5a8",
+          "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+          "findingIds": [
+            "T004-R1-F1",
+            "T004-R1-F2",
+            "T004-R1-F3",
+            "T004-R1-F4",
+            "T004-R1-F5",
+            "T004-R1-F6"
+          ],
+          "summary": "Recorded review_result verdict=block for exact review subject."
+        },
+        {
+          "at": "2026-07-31T15:53:40.901Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "fix_request",
+          "summary": "Fix-pass round 1/2 requested."
+        },
+        {
+          "at": "2026-07-31T15:53:48.211Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "request_completion",
+          "summary": "Request-completion completion-d40be633-269d-41ca-b159-fdd104e4346a: pending_manual_validation; validation=pending_manual; validationPlan=sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de.",
+          "completionAttemptId": "completion-d40be633-269d-41ca-b159-fdd104e4346a",
+          "acceptanceDecision": "pending_manual_validation",
+          "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de"
+        },
+        {
+          "at": "2026-07-31T15:55:36.695Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "review_request",
+          "summary": "Review round 2/2 requested."
+        },
+        {
+          "at": "2026-07-31T15:56:28.297Z",
+          "by": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "agent": "pi",
+          "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "kind": "review_settlement",
+          "settlementId": "RS-T004-round2-pass",
+          "settlementKind": "review_result",
+          "verdict": "pass",
+          "reviewRequestId": "RR-T004-3210c4fa-153b-4b23-ac06-9e63edb4b932",
+          "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+          "findingIds": [
+            "T004-R1-F1",
+            "T004-R1-F2",
+            "T004-R1-F3",
+            "T004-R1-F4",
+            "T004-R1-F5",
+            "T004-R1-F6"
+          ],
+          "summary": "Recorded review_result verdict=pass for exact review subject."
+        }
+      ],
+      "lease": {
+        "status": "closed",
+        "owner": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+        "agent": "pi",
+        "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+        "startedAt": "2026-07-31T15:42:02.103Z",
+        "heartbeatAt": "2026-07-31T15:42:02.303Z",
+        "expiresAt": "2026-07-31T16:12:02.303Z",
+        "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+        "closedAt": "2026-07-31T15:48:27.236Z",
+        "closedBy": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+        "closeReason": "review"
+      },
+      "completion": {
+        "schemaVersion": 1,
+        "baselines": [
+          {
+            "schemaVersion": 1,
+            "id": "baseline-100f1925-6937-4ce7-9bc9-289edf578fa2",
+            "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+            "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+            "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+            "capturedAt": "2026-07-31T15:42:02.103Z",
+            "claimedAt": "2026-07-31T15:42:02.103Z",
+            "capturedBy": {
+              "owner": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+              "agent": "pi",
+              "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks"
+            },
+            "warnings": [
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              }
+            ],
+            "startSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+            "startTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+            "evidenceScope": "task-relevant",
+            "taskScopePaths": [
+              "packages/agent/src/harness/session/session.ts",
+              "packages/ai/src/api/openai-codex-responses.ts",
+              "packages/ai/src/api/pi-messages.ts",
+              "packages/ai/src/types.ts",
+              "packages/coding-agent/docs/provider-outcome-session-contract.md",
+              "packages/coding-agent/docs/session-format.md",
+              "packages/coding-agent/src/core/session-manager.ts"
+            ],
+            "dirtyAtStart": false,
+            "wholeWorktreeDirtyAtStart": true,
+            "startDirtyHash": "sha256:5654e7310a9ebf66bc848e8e4e6e29064effb789b30cc64b86f9bdfdb1993d2d",
+            "fingerprint": {
+              "schemaVersion": 1,
+              "algorithm": "task-manager-content-fingerprint-v1",
+              "hash": "sha256:9d67aca059224491ecf3cd2aaa6a855f2305b4efecaa72657b5cae332a45fe90",
+              "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "generatedAt": "2026-07-31T15:42:02.103Z",
+              "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+              "headSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+              "headTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+              "evidenceScope": "task-relevant",
+              "scopePaths": [
+                "packages/agent/src/harness/session/session.ts",
+                "packages/ai/src/api/openai-codex-responses.ts",
+                "packages/ai/src/api/pi-messages.ts",
+                "packages/ai/src/types.ts",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                "packages/coding-agent/docs/session-format.md",
+                "packages/coding-agent/src/core/session-manager.ts"
+              ],
+              "paths": [],
+              "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+              "warnings": [
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ]
+            }
+          }
+        ],
+        "latestBaselineId": "baseline-100f1925-6937-4ce7-9bc9-289edf578fa2",
+        "warnings": [
+          {
+            "code": "completion_unrelated_worktree_changes_excluded",
+            "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+          },
+          {
+            "code": "providers_advisory_only",
+            "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+          },
+          {
+            "code": "auto_commit_disabled",
+            "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+          },
+          {
+            "code": "completion_unrelated_worktree_changes_excluded",
+            "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+          },
+          {
+            "code": "delegated_child_evidence_recording",
+            "message": "Recorded as delegated child-run evidence (run a0053289-57b3-4609-a4cd-4176e4367b7d); the task lease stays with its owner and no status promotion, lease claim, or heartbeat was performed. The manager accepts from the recorded attempt."
+          }
+        ],
+        "attempts": [
+          {
+            "schemaVersion": 1,
+            "id": "completion-e60aeeb1-7eb5-4c43-ad21-2e7d87770f52",
+            "taskId": "T004",
+            "requestedBy": "session:019fb8d6-f923-78f7-b25e-a68cedaa0bb7",
+            "requestedAt": "2026-07-31T15:45:38.479Z",
+            "repoBaselines": [
+              {
+                "schemaVersion": 1,
+                "id": "baseline-100f1925-6937-4ce7-9bc9-289edf578fa2",
+                "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+                "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                "capturedAt": "2026-07-31T15:42:02.103Z",
+                "claimedAt": "2026-07-31T15:42:02.103Z",
+                "capturedBy": {
+                  "owner": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+                  "agent": "pi",
+                  "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks"
+                },
+                "warnings": [
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  }
+                ],
+                "startSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                "startTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+                "evidenceScope": "task-relevant",
+                "taskScopePaths": [
+                  "packages/agent/src/harness/session/session.ts",
+                  "packages/ai/src/api/openai-codex-responses.ts",
+                  "packages/ai/src/api/pi-messages.ts",
+                  "packages/ai/src/types.ts",
+                  "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                  "packages/coding-agent/docs/session-format.md",
+                  "packages/coding-agent/src/core/session-manager.ts"
+                ],
+                "dirtyAtStart": false,
+                "wholeWorktreeDirtyAtStart": true,
+                "startDirtyHash": "sha256:5654e7310a9ebf66bc848e8e4e6e29064effb789b30cc64b86f9bdfdb1993d2d",
+                "fingerprint": {
+                  "schemaVersion": 1,
+                  "algorithm": "task-manager-content-fingerprint-v1",
+                  "hash": "sha256:9d67aca059224491ecf3cd2aaa6a855f2305b4efecaa72657b5cae332a45fe90",
+                  "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "generatedAt": "2026-07-31T15:42:02.103Z",
+                  "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+                  "evidenceScope": "task-relevant",
+                  "scopePaths": [
+                    "packages/agent/src/harness/session/session.ts",
+                    "packages/ai/src/api/openai-codex-responses.ts",
+                    "packages/ai/src/api/pi-messages.ts",
+                    "packages/ai/src/types.ts",
+                    "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "packages/coding-agent/docs/session-format.md",
+                    "packages/coding-agent/src/core/session-manager.ts"
+                  ],
+                  "paths": [],
+                  "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+                  "warnings": [
+                    {
+                      "code": "completion_unrelated_worktree_changes_excluded",
+                      "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                    }
+                  ]
+                }
+              }
+            ],
+            "recordedBy": {
+              "kind": "delegated-child-run",
+              "sessionId": "019fb8d6-f923-78f7-b25e-a68cedaa0bb7",
+              "runId": "a0053289-57b3-4609-a4cd-4176e4367b7d",
+              "childSessionFile": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/0148b84e/run-0/session.jsonl",
+              "launchKey": "TR-T004-ms941zir",
+              "refSource": "attempts[1]"
+            },
+            "diffSummary": {
+              "schemaVersion": 1,
+              "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+              "capturedAt": "2026-07-31T15:45:38.494Z",
+              "evidenceScope": "task-relevant",
+              "taskScopePaths": [
+                "packages/agent/src/harness/session/session.ts",
+                "packages/ai/src/api/openai-codex-responses.ts",
+                "packages/ai/src/api/pi-messages.ts",
+                "packages/ai/src/types.ts",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                "packages/coding-agent/docs/session-format.md",
+                "packages/coding-agent/src/core/session-manager.ts"
+              ],
+              "evidencePaths": [
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "wholeWorktreeDirty": true,
+              "all": [
+                ".pi-subagents/",
+                ".pi/tasks.json",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "taskRelevant": [
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "tracked": [
+                ".pi/tasks.json"
+              ],
+              "untracked": [
+                ".pi-subagents/",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "deleted": [],
+              "statusEntries": [
+                {
+                  "path": ".pi/tasks.json",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": ".pi-subagents/",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                }
+              ],
+              "warnings": [
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ]
+            },
+            "validationPlan": {
+              "schemaVersion": 1,
+              "algorithm": "task-manager-validation-plan-v1",
+              "hash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+              "sources": [
+                "task.validation"
+              ],
+              "checks": [
+                {
+                  "id": "task-validation-1",
+                  "source": "task.validation",
+                  "kind": "command",
+                  "execution": "automated",
+                  "command": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+                  "required": true,
+                  "reasonCode": "validation.command_planned"
+                },
+                {
+                  "id": "task-validation-2",
+                  "source": "task.validation",
+                  "kind": "manual",
+                  "execution": "manual",
+                  "description": "Independent architecture review of session-format compatibility, provider/UI/compaction consumers, migration, and pg/core ownership; no live provider request.",
+                  "required": true,
+                  "manualState": "pending",
+                  "reasonCode": "validation.manual_required_pending"
+                }
+              ],
+              "warnings": [],
+              "blockers": [
+                {
+                  "code": "validation.manual_required_pending",
+                  "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+                }
+              ]
+            },
+            "validationResults": [
+              {
+                "schemaVersion": 1,
+                "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+                "status": "pending_manual",
+                "startedAt": "2026-07-31T15:45:38.480Z",
+                "finishedAt": "2026-07-31T15:45:38.494Z",
+                "freshnessFingerprint": {
+                  "schemaVersion": 1,
+                  "algorithm": "task-manager-content-fingerprint-v1",
+                  "hash": "sha256:282df04b621bec9bca183da8e2b32667578fbf7b3e9bd2f4e8c1164195ef341b",
+                  "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "generatedAt": "2026-07-31T15:45:38.479Z",
+                  "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+                  "evidenceScope": "task-relevant",
+                  "scopePaths": [
+                    "packages/agent/src/harness/session/session.ts",
+                    "packages/ai/src/api/openai-codex-responses.ts",
+                    "packages/ai/src/api/pi-messages.ts",
+                    "packages/ai/src/types.ts",
+                    "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "packages/coding-agent/docs/session-format.md",
+                    "packages/coding-agent/src/core/session-manager.ts"
+                  ],
+                  "paths": [
+                    "packages/coding-agent/docs/provider-outcome-session-contract.md"
+                  ],
+                  "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+                  "warnings": [
+                    {
+                      "code": "completion_unrelated_worktree_changes_excluded",
+                      "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                    }
+                  ]
+                },
+                "results": [
+                  {
+                    "index": 0,
+                    "kind": "command",
+                    "label": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "command": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "required": true,
+                    "status": "passed",
+                    "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                    "timeoutSeconds": 120,
+                    "durationMs": 13,
+                    "exitCode": 0
+                  },
+                  {
+                    "index": 1,
+                    "kind": "manual",
+                    "label": "Independent architecture review of session-format compatibility, provider/UI/compaction consumers, migration, and pg/core ownership; no live provider request.",
+                    "required": true,
+                    "status": "skipped",
+                    "error": "Manual validation remains unverified; the automated runner did not execute it as a shell command."
+                  }
+                ],
+                "warnings": [
+                  {
+                    "code": "providers_advisory_only",
+                    "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+                  },
+                  {
+                    "code": "auto_commit_disabled",
+                    "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+                  },
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  },
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  },
+                  {
+                    "code": "delegated_child_evidence_recording",
+                    "message": "Recorded as delegated child-run evidence (run a0053289-57b3-4609-a4cd-4176e4367b7d); the task lease stays with its owner and no status promotion, lease claim, or heartbeat was performed. The manager accepts from the recorded attempt."
+                  }
+                ],
+                "blockers": [
+                  {
+                    "code": "validation.manual_required_pending",
+                    "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+                  }
+                ]
+              }
+            ],
+            "commitPlan": {
+              "schemaVersion": 1,
+              "mode": "manual",
+              "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "files": [
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "autoCommitAllowed": false,
+              "warnings": [
+                {
+                  "code": "auto_commit_disabled",
+                  "message": "MVP1 does not auto-commit; commit policy is reported as guidance only."
+                }
+              ]
+            },
+            "acceptanceDecision": {
+              "schemaVersion": 1,
+              "decidedAt": "2026-07-31T15:45:38.479Z",
+              "decidedBy": "session:019fb8d6-f923-78f7-b25e-a68cedaa0bb7",
+              "state": "pending_manual_validation",
+              "reason": "Required automation passed with no failed or rejected optional automated checks, but one or more required manual checks remain unverified.",
+              "warnings": [
+                {
+                  "code": "providers_advisory_only",
+                  "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+                },
+                {
+                  "code": "auto_commit_disabled",
+                  "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+                },
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                },
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                },
+                {
+                  "code": "delegated_child_evidence_recording",
+                  "message": "Recorded as delegated child-run evidence (run a0053289-57b3-4609-a4cd-4176e4367b7d); the task lease stays with its owner and no status promotion, lease claim, or heartbeat was performed. The manager accepts from the recorded attempt."
+                }
+              ],
+              "blockers": [
+                {
+                  "code": "validation.manual_required_pending",
+                  "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+                }
+              ]
+            },
+            "warnings": [
+              {
+                "code": "providers_advisory_only",
+                "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+              },
+              {
+                "code": "auto_commit_disabled",
+                "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+              },
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              },
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              },
+              {
+                "code": "delegated_child_evidence_recording",
+                "message": "Recorded as delegated child-run evidence (run a0053289-57b3-4609-a4cd-4176e4367b7d); the task lease stays with its owner and no status promotion, lease claim, or heartbeat was performed. The manager accepts from the recorded attempt."
+              }
+            ],
+            "blockers": [
+              {
+                "code": "validation.manual_required_pending",
+                "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+              }
+            ]
+          },
+          {
+            "schemaVersion": 1,
+            "id": "completion-d40be633-269d-41ca-b159-fdd104e4346a",
+            "taskId": "T004",
+            "requestedBy": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+            "requestedAt": "2026-07-31T15:53:48.071Z",
+            "repoBaselines": [
+              {
+                "schemaVersion": 1,
+                "id": "baseline-100f1925-6937-4ce7-9bc9-289edf578fa2",
+                "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+                "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                "capturedAt": "2026-07-31T15:42:02.103Z",
+                "claimedAt": "2026-07-31T15:42:02.103Z",
+                "capturedBy": {
+                  "owner": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+                  "agent": "pi",
+                  "sessionId": "019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks"
+                },
+                "warnings": [
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  }
+                ],
+                "startSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                "startTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+                "evidenceScope": "task-relevant",
+                "taskScopePaths": [
+                  "packages/agent/src/harness/session/session.ts",
+                  "packages/ai/src/api/openai-codex-responses.ts",
+                  "packages/ai/src/api/pi-messages.ts",
+                  "packages/ai/src/types.ts",
+                  "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                  "packages/coding-agent/docs/session-format.md",
+                  "packages/coding-agent/src/core/session-manager.ts"
+                ],
+                "dirtyAtStart": false,
+                "wholeWorktreeDirtyAtStart": true,
+                "startDirtyHash": "sha256:5654e7310a9ebf66bc848e8e4e6e29064effb789b30cc64b86f9bdfdb1993d2d",
+                "fingerprint": {
+                  "schemaVersion": 1,
+                  "algorithm": "task-manager-content-fingerprint-v1",
+                  "hash": "sha256:9d67aca059224491ecf3cd2aaa6a855f2305b4efecaa72657b5cae332a45fe90",
+                  "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "generatedAt": "2026-07-31T15:42:02.103Z",
+                  "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+                  "evidenceScope": "task-relevant",
+                  "scopePaths": [
+                    "packages/agent/src/harness/session/session.ts",
+                    "packages/ai/src/api/openai-codex-responses.ts",
+                    "packages/ai/src/api/pi-messages.ts",
+                    "packages/ai/src/types.ts",
+                    "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "packages/coding-agent/docs/session-format.md",
+                    "packages/coding-agent/src/core/session-manager.ts"
+                  ],
+                  "paths": [],
+                  "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+                  "warnings": [
+                    {
+                      "code": "completion_unrelated_worktree_changes_excluded",
+                      "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                    }
+                  ]
+                }
+              }
+            ],
+            "diffSummary": {
+              "schemaVersion": 1,
+              "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+              "capturedAt": "2026-07-31T15:53:48.090Z",
+              "evidenceScope": "task-relevant",
+              "taskScopePaths": [
+                "packages/agent/src/harness/session/session.ts",
+                "packages/ai/src/api/openai-codex-responses.ts",
+                "packages/ai/src/api/pi-messages.ts",
+                "packages/ai/src/types.ts",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                "packages/coding-agent/docs/session-format.md",
+                "packages/coding-agent/src/core/session-manager.ts"
+              ],
+              "evidencePaths": [
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "wholeWorktreeDirty": true,
+              "all": [
+                ".pi-subagents/",
+                ".pi/tasks.json",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "taskRelevant": [
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "tracked": [
+                ".pi/tasks.json"
+              ],
+              "untracked": [
+                ".pi-subagents/",
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "deleted": [],
+              "statusEntries": [
+                {
+                  "path": ".pi/tasks.json",
+                  "status": " M",
+                  "untracked": false,
+                  "deleted": false
+                },
+                {
+                  "path": ".pi-subagents/",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                },
+                {
+                  "path": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                  "status": "??",
+                  "untracked": true,
+                  "deleted": false
+                }
+              ],
+              "warnings": [
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ]
+            },
+            "validationPlan": {
+              "schemaVersion": 1,
+              "algorithm": "task-manager-validation-plan-v1",
+              "hash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+              "sources": [
+                "task.validation"
+              ],
+              "checks": [
+                {
+                  "id": "task-validation-1",
+                  "source": "task.validation",
+                  "kind": "command",
+                  "execution": "automated",
+                  "command": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+                  "required": true,
+                  "reasonCode": "validation.command_planned"
+                },
+                {
+                  "id": "task-validation-2",
+                  "source": "task.validation",
+                  "kind": "manual",
+                  "execution": "manual",
+                  "description": "Independent architecture review of session-format compatibility, provider/UI/compaction consumers, migration, and pg/core ownership; no live provider request.",
+                  "required": true,
+                  "manualState": "pending",
+                  "reasonCode": "validation.manual_required_pending"
+                }
+              ],
+              "warnings": [],
+              "blockers": [
+                {
+                  "code": "validation.manual_required_pending",
+                  "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+                }
+              ]
+            },
+            "validationResults": [
+              {
+                "schemaVersion": 1,
+                "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+                "status": "pending_manual",
+                "startedAt": "2026-07-31T15:53:48.072Z",
+                "finishedAt": "2026-07-31T15:53:48.090Z",
+                "freshnessFingerprint": {
+                  "schemaVersion": 1,
+                  "algorithm": "task-manager-content-fingerprint-v1",
+                  "hash": "sha256:e21d19c0ef7556ffb7b7fe4a7068af8dedc01ce8859969f75fa36aa37e3ca122",
+                  "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "gitRoot": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                  "generatedAt": "2026-07-31T15:53:48.071Z",
+                  "baselineSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headSha": "ee712624320e40b5883f7046f5272b6be1d55f35",
+                  "headTree": "c8a9d95303b2bd631ba760c13a711a1c3f888ff0",
+                  "evidenceScope": "task-relevant",
+                  "scopePaths": [
+                    "packages/agent/src/harness/session/session.ts",
+                    "packages/ai/src/api/openai-codex-responses.ts",
+                    "packages/ai/src/api/pi-messages.ts",
+                    "packages/ai/src/types.ts",
+                    "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "packages/coding-agent/docs/session-format.md",
+                    "packages/coding-agent/src/core/session-manager.ts"
+                  ],
+                  "paths": [
+                    "packages/coding-agent/docs/provider-outcome-session-contract.md"
+                  ],
+                  "validationPlanHash": "sha256:a23d5913ad1ccec0971863ba11ee9fa3a87ed4c8911abb892cfa3a7b20dd90de",
+                  "warnings": [
+                    {
+                      "code": "completion_unrelated_worktree_changes_excluded",
+                      "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                    }
+                  ]
+                },
+                "results": [
+                  {
+                    "index": 0,
+                    "kind": "command",
+                    "label": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "command": "git diff --check -- packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "required": true,
+                    "status": "passed",
+                    "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+                    "timeoutSeconds": 120,
+                    "durationMs": 17,
+                    "exitCode": 0
+                  },
+                  {
+                    "index": 1,
+                    "kind": "manual",
+                    "label": "Independent architecture review of session-format compatibility, provider/UI/compaction consumers, migration, and pg/core ownership; no live provider request.",
+                    "required": true,
+                    "status": "skipped",
+                    "error": "Manual validation remains unverified; the automated runner did not execute it as a shell command."
+                  }
+                ],
+                "warnings": [
+                  {
+                    "code": "providers_advisory_only",
+                    "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+                  },
+                  {
+                    "code": "auto_commit_disabled",
+                    "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+                  },
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  },
+                  {
+                    "code": "completion_unrelated_worktree_changes_excluded",
+                    "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                  }
+                ],
+                "blockers": [
+                  {
+                    "code": "validation.manual_required_pending",
+                    "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+                  }
+                ]
+              }
+            ],
+            "commitPlan": {
+              "schemaVersion": 1,
+              "mode": "manual",
+              "repo": "pi-mono-pg-ext-tool-span-coherence-tasks",
+              "cwd": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks",
+              "files": [
+                "packages/coding-agent/docs/provider-outcome-session-contract.md"
+              ],
+              "autoCommitAllowed": false,
+              "warnings": [
+                {
+                  "code": "auto_commit_disabled",
+                  "message": "MVP1 does not auto-commit; commit policy is reported as guidance only."
+                }
+              ]
+            },
+            "acceptanceDecision": {
+              "schemaVersion": 1,
+              "decidedAt": "2026-07-31T15:53:48.071Z",
+              "decidedBy": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+              "state": "pending_manual_validation",
+              "reason": "Required automation passed with no failed or rejected optional automated checks, but one or more required manual checks remain unverified.",
+              "warnings": [
+                {
+                  "code": "providers_advisory_only",
+                  "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+                },
+                {
+                  "code": "auto_commit_disabled",
+                  "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+                },
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                },
+                {
+                  "code": "completion_unrelated_worktree_changes_excluded",
+                  "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+                }
+              ],
+              "blockers": [
+                {
+                  "code": "validation.manual_required_pending",
+                  "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+                }
+              ]
+            },
+            "warnings": [
+              {
+                "code": "providers_advisory_only",
+                "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+              },
+              {
+                "code": "auto_commit_disabled",
+                "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+              },
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              },
+              {
+                "code": "completion_unrelated_worktree_changes_excluded",
+                "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+              }
+            ],
+            "blockers": [
+              {
+                "code": "validation.manual_required_pending",
+                "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+              }
+            ]
+          }
+        ],
+        "latestAttemptId": "completion-d40be633-269d-41ca-b159-fdd104e4346a",
+        "latestAcceptanceDecision": {
+          "schemaVersion": 1,
+          "decidedAt": "2026-07-31T15:53:48.071Z",
+          "decidedBy": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+          "state": "pending_manual_validation",
+          "reason": "Required automation passed with no failed or rejected optional automated checks, but one or more required manual checks remain unverified.",
+          "warnings": [
+            {
+              "code": "providers_advisory_only",
+              "message": "MVP1.5 planning providers are advisory only; request-completion executes explicit task.validation only and does not enforce provider checks or gates."
+            },
+            {
+              "code": "auto_commit_disabled",
+              "message": "MVP1 request-completion never auto-commits; final done remains acceptance unless an explicit auto-done completion policy safely applies."
+            },
+            {
+              "code": "completion_unrelated_worktree_changes_excluded",
+              "message": "1 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+            },
+            {
+              "code": "completion_unrelated_worktree_changes_excluded",
+              "message": "2 selected-repository worktree change(s) were excluded from task-owned evidence because they are outside the declared task scope."
+            }
+          ],
+          "blockers": [
+            {
+              "code": "validation.manual_required_pending",
+              "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+            }
+          ]
+        },
+        "blockers": [
+          {
+            "code": "validation.manual_required_pending",
+            "message": "Required manual validation 'task-validation-2' is unverified and cannot contribute to a passing completion verdict."
+          }
+        ]
+      },
+      "reviewState": {
+        "status": "passed",
+        "roundsRequested": 2,
+        "maxRounds": 2,
+        "maxReviewRounds": 2,
+        "maxFixRounds": 2,
+        "lastRequestedAt": "2026-07-31T15:55:36.695Z",
+        "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+        "requests": [
+          {
+            "at": "2026-07-31T15:48:27.236Z",
+            "round": 1,
+            "schemaVersion": 1,
+            "reviewProtocolVersion": 1,
+            "taskId": "T004",
+            "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+            "reviewRequestId": "RR-T004-0ed2eb59-4080-4c77-812e-7e7f5506f5a8",
+            "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+            "implementationRevision": {
+              "kind": "completion_fingerprint",
+              "id": "sha256:282df04b621bec9bca183da8e2b32667578fbf7b3e9bd2f4e8c1164195ef341b",
+              "evidenceScope": "task-relevant"
+            },
+            "taskContractFingerprint": {
+              "schemaVersion": 1,
+              "algorithm": "sha256-rfc8785-json-v1",
+              "digest": "90f4f5d0211ae7d9b90da13088853aff643402519675750408b54abb1a7efa7d"
+            },
+            "completionAttemptId": "completion-e60aeeb1-7eb5-4c43-ad21-2e7d87770f52",
+            "reviewPolicyFingerprint": {
+              "schemaVersion": 1,
+              "algorithm": "sha256-rfc8785-json-v1",
+              "digest": "a249125b546b7265d5a8315442f4a32456c9775ca008409c84673b25758ac455"
+            },
+            "handoffId": "SR-T004-ms947o8z",
+            "transport": "subagent",
+            "receiverPreset": "balanced",
+            "contextPacketHash": "sha256:fd515feddf535fe80b150e038789ab82552d472ad37831a941c3fef0cff24cbb",
+            "expectedResponder": {
+              "kind": "subagent",
+              "id": "task-manager-direct/direct"
+            },
+            "responseCorrelation": {
+              "handoffId": "SR-T004-ms947o8z",
+              "contextPacketHash": "sha256:fd515feddf535fe80b150e038789ab82552d472ad37831a941c3fef0cff24cbb"
+            },
+            "subagentRunRefs": [
+              {
+                "schemaVersion": 1,
+                "recordId": "095c413d:0",
+                "runId": "095c413d",
+                "childIndex": 0,
+                "displayIndex": 1,
+                "agent": "task-manager-direct/direct",
+                "role": "reviewer",
+                "workflow": "review",
+                "transport": "subagent",
+                "source": "task-manager",
+                "contextMode": "fresh",
+                "taskId": "T004",
+                "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+                "childSessionFile": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl",
+                "status": "completed",
+                "contextPacketHash": "sha256:fd515feddf535fe80b150e038789ab82552d472ad37831a941c3fef0cff24cbb",
+                "handoffId": "SR-T004-ms947o8z",
+                "inspectCommands": {
+                  "picker": "/subagent-sessions --run 095c413d",
+                  "session": "pi --session \"/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl\""
+                }
+              }
+            ]
+          },
+          {
+            "at": "2026-07-31T15:55:36.695Z",
+            "round": 2,
+            "schemaVersion": 1,
+            "reviewProtocolVersion": 1,
+            "taskId": "T004",
+            "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+            "reviewRequestId": "RR-T004-3210c4fa-153b-4b23-ac06-9e63edb4b932",
+            "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+            "implementationRevision": {
+              "kind": "completion_fingerprint",
+              "id": "sha256:e21d19c0ef7556ffb7b7fe4a7068af8dedc01ce8859969f75fa36aa37e3ca122",
+              "evidenceScope": "task-relevant"
+            },
+            "taskContractFingerprint": {
+              "schemaVersion": 1,
+              "algorithm": "sha256-rfc8785-json-v1",
+              "digest": "90f4f5d0211ae7d9b90da13088853aff643402519675750408b54abb1a7efa7d"
+            },
+            "completionAttemptId": "completion-d40be633-269d-41ca-b159-fdd104e4346a",
+            "reviewPolicyFingerprint": {
+              "schemaVersion": 1,
+              "algorithm": "sha256-rfc8785-json-v1",
+              "digest": "a249125b546b7265d5a8315442f4a32456c9775ca008409c84673b25758ac455"
+            },
+            "handoffId": "SR-T004-ms94h85g",
+            "transport": "subagent",
+            "receiverPreset": "balanced",
+            "contextPacketHash": "sha256:43fb86f5a86ce0ca82ea25cd0c5092d89f593a9fefcf6d959bde41b4e9921ccf",
+            "expectedResponder": {
+              "kind": "subagent",
+              "id": "task-manager-direct/direct"
+            },
+            "responseCorrelation": {
+              "handoffId": "SR-T004-ms94h85g",
+              "contextPacketHash": "sha256:43fb86f5a86ce0ca82ea25cd0c5092d89f593a9fefcf6d959bde41b4e9921ccf"
+            },
+            "subagentRunRefs": [
+              {
+                "schemaVersion": 1,
+                "recordId": "923b0bf3:0",
+                "runId": "923b0bf3",
+                "childIndex": 0,
+                "displayIndex": 1,
+                "agent": "task-manager-direct/direct",
+                "role": "reviewer",
+                "workflow": "review",
+                "transport": "subagent",
+                "source": "task-manager",
+                "contextMode": "fresh",
+                "taskId": "T004",
+                "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+                "childSessionFile": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl",
+                "status": "completed",
+                "contextPacketHash": "sha256:43fb86f5a86ce0ca82ea25cd0c5092d89f593a9fefcf6d959bde41b4e9921ccf",
+                "handoffId": "SR-T004-ms94h85g",
+                "inspectCommands": {
+                  "picker": "/subagent-sessions --run 923b0bf3",
+                  "session": "pi --session \"/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl\""
+                }
+              }
+            ]
+          }
+        ],
+        "lastSettledAt": "2026-07-31T15:56:28.297Z",
+        "lastSettlementId": "RS-T004-round2-pass",
+        "settlements": [
+          {
+            "schemaVersion": 1,
+            "settlementId": "RS-T004-round1-block",
+            "kind": "review_result",
+            "subject": {
+              "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+              "implementationRevision": {
+                "kind": "completion_fingerprint",
+                "id": "sha256:282df04b621bec9bca183da8e2b32667578fbf7b3e9bd2f4e8c1164195ef341b",
+                "evidenceScope": "task-relevant"
+              },
+              "taskContractFingerprint": {
+                "schemaVersion": 1,
+                "algorithm": "sha256-rfc8785-json-v1",
+                "digest": "90f4f5d0211ae7d9b90da13088853aff643402519675750408b54abb1a7efa7d"
+              },
+              "completionAttemptId": "completion-e60aeeb1-7eb5-4c43-ad21-2e7d87770f52",
+              "reviewPolicyFingerprint": {
+                "schemaVersion": 1,
+                "algorithm": "sha256-rfc8785-json-v1",
+                "digest": "a249125b546b7265d5a8315442f4a32456c9775ca008409c84673b25758ac455"
+              }
+            },
+            "recordedAt": "2026-07-31T15:49:10.994Z",
+            "recordedBy": {
+              "kind": "system",
+              "id": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8"
+            },
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl",
+                "summary": "Independent architecture review round 1"
+              }
+            ],
+            "summary": "Block pending migration transaction safety and enforceable downgrade compatibility; address concrete schema/event/conformance/actionability findings in the design artifact.",
+            "reviewRequestId": "RR-T004-0ed2eb59-4080-4c77-812e-7e7f5506f5a8",
+            "verdict": "block",
+            "findings": [
+              {
+                "findingId": "T004-R1-F1",
+                "severity": "must_fix",
+                "title": "Specify atomic migration transaction instead of relying on nonexistent rewrite safety",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F2",
+                "severity": "must_fix",
+                "title": "Define enforceable downgrade-corruption protection for v4 versus installed v3 writers",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F3",
+                "severity": "should_fix",
+                "title": "Make partial-failure projection a concrete versioned schema rule",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F4",
+                "severity": "should_fix",
+                "title": "Define event deduplication identity across failed message_end and provider_outcome",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F5",
+                "severity": "should_fix",
+                "title": "Require synthetic shared terminal normalization coverage for exempt provider adapters",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F6",
+                "severity": "should_fix",
+                "title": "Name concrete RPC/export/print/tree/usage/extension implementation seams",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+                  }
+                ]
+              }
+            ],
+            "reviewer": {
+              "kind": "subagent",
+              "id": "task-manager-direct/direct"
+            },
+            "responseEvidence": {
+              "reviewRequestId": "RR-T004-0ed2eb59-4080-4c77-812e-7e7f5506f5a8",
+              "kind": "child_session",
+              "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl"
+            },
+            "responseReceipt": {
+              "schemaVersion": 1,
+              "requestId": "RR-T004-0ed2eb59-4080-4c77-812e-7e7f5506f5a8",
+              "reviewerKind": "subagent",
+              "responseKind": "child_session",
+              "responseRef": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/095c413d/run-0/session.jsonl",
+              "verifiedAt": "2026-07-31T15:49:10.994Z",
+              "verifier": "subagent_terminal_index"
+            }
+          },
+          {
+            "schemaVersion": 1,
+            "settlementId": "RS-T004-round2-pass",
+            "kind": "review_result",
+            "subject": {
+              "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+              "implementationRevision": {
+                "kind": "completion_fingerprint",
+                "id": "sha256:e21d19c0ef7556ffb7b7fe4a7068af8dedc01ce8859969f75fa36aa37e3ca122",
+                "evidenceScope": "task-relevant"
+              },
+              "taskContractFingerprint": {
+                "schemaVersion": 1,
+                "algorithm": "sha256-rfc8785-json-v1",
+                "digest": "90f4f5d0211ae7d9b90da13088853aff643402519675750408b54abb1a7efa7d"
+              },
+              "completionAttemptId": "completion-d40be633-269d-41ca-b159-fdd104e4346a",
+              "reviewPolicyFingerprint": {
+                "schemaVersion": 1,
+                "algorithm": "sha256-rfc8785-json-v1",
+                "digest": "a249125b546b7265d5a8315442f4a32456c9775ca008409c84673b25758ac455"
+              }
+            },
+            "recordedAt": "2026-07-31T15:56:28.267Z",
+            "recordedBy": {
+              "kind": "system",
+              "id": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8"
+            },
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl",
+                "summary": "Independent architecture re-review; pass with residual should-fix findings"
+              }
+            ],
+            "summary": "Pass. Both migration-safety blockers are resolved. Four nonblocking specification-completeness findings remain as implementation-task refinement inputs.",
+            "reviewRequestId": "RR-T004-3210c4fa-153b-4b23-ac06-9e63edb4b932",
+            "verdict": "pass",
+            "findings": [
+              {
+                "findingId": "T004-R1-F1",
+                "severity": "must_fix",
+                "title": "Specify atomic migration transaction instead of relying on nonexistent rewrite safety",
+                "status": "resolved",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+                  }
+                ],
+                "resolutionEvidenceRefs": [
+                  {
+                    "kind": "file",
+                    "ref": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "summary": "Atomic side-by-side transaction and fault-injection requirements at lines 108-133."
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F2",
+                "severity": "must_fix",
+                "title": "Define enforceable downgrade-corruption protection for v4 versus installed v3 writers",
+                "status": "resolved",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+                  }
+                ],
+                "resolutionEvidenceRefs": [
+                  {
+                    "kind": "file",
+                    "ref": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                    "summary": "v4 namespace isolation, immutable snapshots, divergence detection, and rollback/export at lines 135-150."
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F3",
+                "severity": "should_fix",
+                "title": "Make partial-failure projection a concrete versioned schema rule",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F4",
+                "severity": "should_fix",
+                "title": "Define event deduplication identity across failed message_end and provider_outcome",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F5",
+                "severity": "should_fix",
+                "title": "Require synthetic shared terminal normalization coverage for exempt provider adapters",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+                  }
+                ]
+              },
+              {
+                "findingId": "T004-R1-F6",
+                "severity": "should_fix",
+                "title": "Name concrete RPC/export/print/tree/usage/extension implementation seams",
+                "status": "open",
+                "expectedResolution": "code_change",
+                "evidenceRefs": [
+                  {
+                    "kind": "child_session",
+                    "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+                  }
+                ]
+              }
+            ],
+            "reviewer": {
+              "kind": "subagent",
+              "id": "task-manager-direct/direct"
+            },
+            "responseEvidence": {
+              "reviewRequestId": "RR-T004-3210c4fa-153b-4b23-ac06-9e63edb4b932",
+              "kind": "child_session",
+              "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+            },
+            "responseReceipt": {
+              "schemaVersion": 1,
+              "requestId": "RR-T004-3210c4fa-153b-4b23-ac06-9e63edb4b932",
+              "reviewerKind": "subagent",
+              "responseKind": "child_session",
+              "responseRef": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl",
+              "verifiedAt": "2026-07-31T15:56:28.267Z",
+              "verifier": "subagent_terminal_index"
+            }
+          }
+        ],
+        "findings": [
+          {
+            "findingId": "T004-R1-F1",
+            "severity": "must_fix",
+            "title": "Specify atomic migration transaction instead of relying on nonexistent rewrite safety",
+            "status": "resolved",
+            "expectedResolution": "code_change",
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+              }
+            ],
+            "resolutionEvidenceRefs": [
+              {
+                "kind": "file",
+                "ref": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                "summary": "Atomic side-by-side transaction and fault-injection requirements at lines 108-133."
+              }
+            ]
+          },
+          {
+            "findingId": "T004-R1-F2",
+            "severity": "must_fix",
+            "title": "Define enforceable downgrade-corruption protection for v4 versus installed v3 writers",
+            "status": "resolved",
+            "expectedResolution": "code_change",
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+              }
+            ],
+            "resolutionEvidenceRefs": [
+              {
+                "kind": "file",
+                "ref": "packages/coding-agent/docs/provider-outcome-session-contract.md",
+                "summary": "v4 namespace isolation, immutable snapshots, divergence detection, and rollback/export at lines 135-150."
+              }
+            ]
+          },
+          {
+            "findingId": "T004-R1-F3",
+            "severity": "should_fix",
+            "title": "Make partial-failure projection a concrete versioned schema rule",
+            "status": "open",
+            "expectedResolution": "code_change",
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+              }
+            ]
+          },
+          {
+            "findingId": "T004-R1-F4",
+            "severity": "should_fix",
+            "title": "Define event deduplication identity across failed message_end and provider_outcome",
+            "status": "open",
+            "expectedResolution": "code_change",
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+              }
+            ]
+          },
+          {
+            "findingId": "T004-R1-F5",
+            "severity": "should_fix",
+            "title": "Require synthetic shared terminal normalization coverage for exempt provider adapters",
+            "status": "open",
+            "expectedResolution": "code_change",
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+              }
+            ]
+          },
+          {
+            "findingId": "T004-R1-F6",
+            "severity": "should_fix",
+            "title": "Name concrete RPC/export/print/tree/usage/extension implementation seams",
+            "status": "open",
+            "expectedResolution": "code_change",
+            "evidenceRefs": [
+              {
+                "kind": "child_session",
+                "ref": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/923b0bf3/run-0/session.jsonl"
+              }
+            ]
+          }
+        ],
+        "fixLaunchReservations": [
+          {
+            "schemaVersion": 1,
+            "reservationId": "FXR-T004-f2cbe56b-9062-492c-a78e-d8ba9a1ed182",
+            "subjectDigest": "51e94cb7878029ce832bc40616404ed65b591da38e8470eadc74edfd66a697d8",
+            "target": {
+              "schemaVersion": 1,
+              "kind": "direct-plan",
+              "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+              "localTaskId": "T004"
+            },
+            "bindingDigest": "2cf8ccc99b48ade498edee1f38e2e9a819c6bc16ea8609efd76a67a6a02209b6",
+            "findingIds": [
+              "T004-R1-F1",
+              "T004-R1-F2"
+            ],
+            "actor": "session:019fb8d6-25a6-7b26-9b58-dbd2ef0218c8",
+            "createdAt": "2026-07-31T15:50:13.002Z",
+            "expiresAt": "2026-07-31T16:00:13.002Z",
+            "status": "finalized"
+          }
+        ],
+        "fixRoundsRequested": 1,
+        "lastFixRequestedAt": "2026-07-31T15:53:40.901Z",
+        "fixRequests": [
+          {
+            "at": "2026-07-31T15:53:40.901Z",
+            "round": 1,
+            "fixRequestId": "FR-T004-8dffccde-c241-4ea5-99bd-c80b743cc1bd",
+            "handoffId": "FX-T004-ms94ci66",
+            "transport": "subagent",
+            "receiverPreset": "balanced",
+            "selectedFindingIds": [
+              "T004-R1-F1",
+              "T004-R1-F2"
+            ],
+            "selectedFindings": [
+              {
+                "findingId": "T004-R1-F1",
+                "severity": "must_fix",
+                "status": "open",
+                "source": "applicable structured review settlement"
+              },
+              {
+                "findingId": "T004-R1-F2",
+                "severity": "must_fix",
+                "status": "open",
+                "source": "applicable structured review settlement"
+              }
+            ],
+            "reviewLineageId": "RL-T004-4c76c1f0-7cdb-4763-b328-27ca47ba3dd4",
+            "contextPacketHash": "sha256:d9ddb3be3449e7fff2c053505e5c432c80db16b14e656533577b2acdd7270717",
+            "summary": "Revise the design artifact to resolve the two must-fix migration safety findings. Documentation only; no production/test/session/.pi-subagents edits and no live providers. Re-run request-completion after revision.",
+            "fixLaunchReservationId": "FXR-T004-f2cbe56b-9062-492c-a78e-d8ba9a1ed182",
+            "subagentRunRefs": [
+              {
+                "schemaVersion": 1,
+                "recordId": "53deb192:0",
+                "runId": "53deb192",
+                "childIndex": 0,
+                "displayIndex": 1,
+                "agent": "task-manager-direct/direct",
+                "role": "worker",
+                "workflow": "fix",
+                "transport": "subagent",
+                "source": "task-manager",
+                "contextMode": "fresh",
+                "taskId": "T004",
+                "planPath": "/Users/pg/Sites/tools/pi-mono-pg-ext-tool-span-coherence-tasks/.pi/tasks.json",
+                "childSessionFile": "/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/53deb192/run-0/session.jsonl",
+                "status": "completed",
+                "contextPacketHash": "sha256:d9ddb3be3449e7fff2c053505e5c432c80db16b14e656533577b2acdd7270717",
+                "handoffId": "FX-T004-ms94ci66",
+                "inspectCommands": {
+                  "picker": "/subagent-sessions --run 53deb192",
+                  "session": "pi --session \"/Users/pg/.pi/agent/sessions/--Users-pg-Sites-tools-pi-mono-pg-ext-tool-span-coherence-tasks--/2026-07-31T15-41-09-926Z_019fb8d6-25a6-7b26-9b58-dbd2ef0218c8/53deb192/run-0/session.jsonl\""
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "proposalApplications": [
@@ -4611,5 +6194,5 @@
       "operationCount": 1
     }
   ],
-  "updatedAt": "2026-07-31T15:32:55.917Z"
+  "updatedAt": "2026-07-31T15:56:28.318Z"
 }
